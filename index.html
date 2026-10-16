@@ -11,7 +11,7 @@
 :root{
   --bg:#f3f5f8; --surface:#ffffff; --line:#d9dfe7; --fg:#18212d; --muted:#5b6778;
   --accent:#1d4fa3; --accent-soft:#e3ebf8; --on-accent:#ffffff; --reset:#e8590c; --on-reset:#ffffff;
-  --c-porteo:#1f8a5b; --c-incid:#c98a12; --c-fuera:#c2453a; --c-trans:#6b5fb5; --c-sin:#9aa4b2;
+  --c-porteo:#1f8a5b; --c-incid:#c98a12; --c-fuera:#c2453a; --c-trans:#6b5fb5; --c-baja:#7a5a3a; --c-sin:#9aa4b2;
   --nxt:#1d4fa3; --nonxt:#8a96a6; --noreg:#d3d9e1;
   --f-display:"Barlow Condensed","Arial Narrow",sans-serif;
   --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -20,12 +20,12 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0f141b; --surface:#171e28; --line:#2a3443; --fg:#e6ebf2; --muted:#98a3b3;
   --accent:#7aa6f0; --accent-soft:#1d2a40; --on-accent:#0f141b; --reset:#ff8a3d; --on-reset:#1a0e05;
-  --c-porteo:#3fbf86; --c-incid:#e2a83a; --c-fuera:#e2685d; --c-trans:#9a8fe0; --c-sin:#6b7684;
+  --c-porteo:#3fbf86; --c-incid:#e2a83a; --c-fuera:#e2685d; --c-trans:#9a8fe0; --c-baja:#c49a6c; --c-sin:#6b7684;
   --nxt:#7aa6f0; --nonxt:#6b7889; --noreg:#2f3a49; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0f141b; --surface:#171e28; --line:#2a3443; --fg:#e6ebf2; --muted:#98a3b3;
   --accent:#7aa6f0; --accent-soft:#1d2a40; --on-accent:#0f141b; --reset:#ff8a3d; --on-reset:#1a0e05;
-  --c-porteo:#3fbf86; --c-incid:#e2a83a; --c-fuera:#e2685d; --c-trans:#9a8fe0; --c-sin:#6b7684;
+  --c-porteo:#3fbf86; --c-incid:#e2a83a; --c-fuera:#e2685d; --c-trans:#9a8fe0; --c-baja:#c49a6c; --c-sin:#6b7684;
   --nxt:#7aa6f0; --nonxt:#6b7889; --noreg:#2f3a49; color-scheme:dark}
 *{box-sizing:border-box}
 html{background:var(--bg)}
@@ -188,7 +188,7 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end}
     <div class="scroll"><table id="tabla"></table></div>
     <div class="pager"><span id="pgInfo"></span><button class="btn ghost" id="pgPrev" type="button">Anterior</button><button class="btn ghost" id="pgNext" type="button">Siguiente</button></div>
   </section>
-  <p class="note">Las gráficas, la matriz y el detalle muestran el <b>Porteo</b> mientras el filtro Tipo esté en Porteo; la comparativa siempre usa ambos. <b>Mejor resultado</b>: el archivo con mayor porcentaje de servicios En porteo (diferencias menores a 0.1 puntos cuentan como Igual). Categorías: <b>En porteo</b> = Entra a porteo, Comunicado · <b>Fuera de porteo</b> = Facturar en zona, Fuera de porteo, Sin comunicación, No comunicado · <b>Transmisión</b>. Portea NXT viene del Registro de Permisionarios y Clientes (<span id="regInfo">–</span>), cruzado por ID de medidor y luego por RPU. "RPU aproximado": el RPU del Registro está en notación científica y solo hay una coincidencia del mismo permisionario.</p>
+  <p class="note">Las gráficas, la matriz y el detalle muestran el <b>Porteo</b> mientras el filtro Tipo esté en Porteo; la comparativa siempre usa ambos. <b>Mejor resultado</b>: el archivo con mayor porcentaje de servicios En porteo (diferencias menores a 0.1 puntos cuentan como Igual). Categorías: <b>En porteo</b> = Entra a porteo, Comunicado, Porteo · <b>Fuera de porteo</b> = Facturar en zona, Fuera de porteo, Sin comunicación, No comunicado, No ha porteado · <b>Transmisión</b> · <b>Baja</b>. Portea NXT viene del Registro de Permisionarios y Clientes (<span id="regInfo">–</span>), cruzado por ID de medidor y luego por RPU. "RPU aproximado": el RPU del Registro está en notación científica y solo hay una coincidencia del mismo permisionario.</p>
 </div>
 
 <dialog id="dlg">
@@ -213,11 +213,12 @@ const DEMO = window.PORTEO_DEMO || null;   // {api:{...}, registro:{...}} solo e
 
 // ===== Catálogos =====
 const CATEGORIAS = {'ENTRA A PORTEO':'En porteo','COMUNICADO':'En porteo','SIN COMUNICACION':'Fuera de porteo','NO COMUNICADO':'Fuera de porteo',
-  'FACTURAR EN ZONA':'Fuera de porteo','FUERA DE PORTEO':'Fuera de porteo','TRANSMISION':'Transmisión'};
+  'FACTURAR EN ZONA':'Fuera de porteo','FUERA DE PORTEO':'Fuera de porteo','TRANSMISION':'Transmisión',
+  'PORTEO':'En porteo','NO HA PORTEADO':'Fuera de porteo','BAJA':'Baja'};
 const ALIAS = {'Demex 1':['Demex','Demex Bimbo PME'],'EGU':['EGU','EGU PME'],'A3T':['A3T Abengoa'],
   'At&t':['At&t','AT&T'],'Grupo Dragon':['Grupo Dragon','Grupo Dragon DSP'],'EDF':['EDF']};
-const CATS = ['En porteo','En porteo con incidencia','Fuera de porteo','Transmisión','Sin estatus'];
-const CATVAR = {'En porteo':'--c-porteo','En porteo con incidencia':'--c-incid','Fuera de porteo':'--c-fuera','Transmisión':'--c-trans','Sin estatus':'--c-sin'};
+const CATS = ['En porteo','En porteo con incidencia','Fuera de porteo','Transmisión','Baja','Sin estatus'];
+const CATVAR = {'En porteo':'--c-porteo','En porteo con incidencia':'--c-incid','Fuera de porteo':'--c-fuera','Transmisión':'--c-trans','Baja':'--c-baja','Sin estatus':'--c-sin'};
 const NXT = ['Portea NXT','No portea NXT','Sin registro','Revisar','Sin dato'];
 const NXTVAR = {'Portea NXT':'--nxt','No portea NXT':'--nonxt','Sin registro':'--noreg','Revisar':'--c-incid','Sin dato':'--noreg'};
 const ETIQ = {tipo:'Tipo',periodo:'Periodo',permisionario:'Permisionario',portea_nxt:'Portea NXT',categoria:'Categoría',division:'División',archivo:'Archivo'};
