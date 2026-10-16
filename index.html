@@ -188,7 +188,7 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end}
     <div class="scroll"><table id="tabla"></table></div>
     <div class="pager"><span id="pgInfo"></span><button class="btn ghost" id="pgPrev" type="button">Anterior</button><button class="btn ghost" id="pgNext" type="button">Siguiente</button></div>
   </section>
-  <p class="note">Las gráficas, la matriz y el detalle muestran el <b>Porteo</b> mientras el filtro Tipo esté en Porteo; la comparativa siempre usa ambos. <b>Mejor resultado</b>: el archivo con mayor porcentaje de servicios En porteo (diferencias menores a 0.1 puntos cuentan como Igual). Categorías: <b>En porteo</b> = Entra a porteo, Comunicado · <b>En porteo con incidencia</b> = Sin comunicación · <b>Fuera de porteo</b> = Facturar en zona, Fuera de porteo · <b>Transmisión</b>. Portea NXT viene del Registro de Permisionarios y Clientes (<span id="regInfo">–</span>), cruzado por ID de medidor y luego por RPU. "RPU aproximado": el RPU del Registro está en notación científica y solo hay una coincidencia del mismo permisionario.</p>
+  <p class="note">Las gráficas, la matriz y el detalle muestran el <b>Porteo</b> mientras el filtro Tipo esté en Porteo; la comparativa siempre usa ambos. <b>Mejor resultado</b>: el archivo con mayor porcentaje de servicios En porteo (diferencias menores a 0.1 puntos cuentan como Igual). Categorías: <b>En porteo</b> = Entra a porteo, Comunicado · <b>En porteo con incidencia</b> = Sin comunicación, No comunicado · <b>Fuera de porteo</b> = Facturar en zona, Fuera de porteo · <b>Transmisión</b>. Portea NXT viene del Registro de Permisionarios y Clientes (<span id="regInfo">–</span>), cruzado por ID de medidor y luego por RPU. "RPU aproximado": el RPU del Registro está en notación científica y solo hay una coincidencia del mismo permisionario.</p>
 </div>
 
 <dialog id="dlg">
@@ -212,7 +212,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbw1rjfj2YgGe3KrEGbjl8V-
 const DEMO = window.PORTEO_DEMO || null;   // {api:{...}, registro:{...}} solo en la vista de prueba
 
 // ===== Catálogos =====
-const CATEGORIAS = {'ENTRA A PORTEO':'En porteo','COMUNICADO':'En porteo','SIN COMUNICACION':'En porteo con incidencia',
+const CATEGORIAS = {'ENTRA A PORTEO':'En porteo','COMUNICADO':'En porteo','SIN COMUNICACION':'En porteo con incidencia','NO COMUNICADO':'En porteo con incidencia',
   'FACTURAR EN ZONA':'Fuera de porteo','FUERA DE PORTEO':'Fuera de porteo','TRANSMISION':'Transmisión'};
 const ALIAS = {'Demex 1':['Demex','Demex Bimbo PME'],'EGU':['EGU','EGU PME'],'A3T':['A3T Abengoa'],
   'At&t':['At&t','AT&T'],'Grupo Dragon':['Grupo Dragon','Grupo Dragon DSP'],'EDF':['EDF']};
