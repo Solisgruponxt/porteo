@@ -10,7 +10,7 @@
 /* Layout: encabezado con acciones, barra de filtros fija con chips activos, indicadores, dos gráficas, matriz y detalle */
 :root{
   --bg:#f3f5f8; --surface:#ffffff; --line:#d9dfe7; --fg:#18212d; --muted:#5b6778;
-  --accent:#1d4fa3; --accent-soft:#e3ebf8; --on-accent:#ffffff;
+  --accent:#1d4fa3; --accent-soft:#e3ebf8; --on-accent:#ffffff; --reset:#e8590c; --on-reset:#ffffff;
   --c-porteo:#1f8a5b; --c-incid:#c98a12; --c-fuera:#c2453a; --c-trans:#6b5fb5; --c-sin:#9aa4b2;
   --nxt:#1d4fa3; --nonxt:#8a96a6; --noreg:#d3d9e1;
   --f-display:"Barlow Condensed","Arial Narrow",sans-serif;
@@ -19,12 +19,12 @@
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0f141b; --surface:#171e28; --line:#2a3443; --fg:#e6ebf2; --muted:#98a3b3;
-  --accent:#7aa6f0; --accent-soft:#1d2a40; --on-accent:#0f141b;
+  --accent:#7aa6f0; --accent-soft:#1d2a40; --on-accent:#0f141b; --reset:#ff8a3d; --on-reset:#1a0e05;
   --c-porteo:#3fbf86; --c-incid:#e2a83a; --c-fuera:#e2685d; --c-trans:#9a8fe0; --c-sin:#6b7684;
   --nxt:#7aa6f0; --nonxt:#6b7889; --noreg:#2f3a49; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0f141b; --surface:#171e28; --line:#2a3443; --fg:#e6ebf2; --muted:#98a3b3;
-  --accent:#7aa6f0; --accent-soft:#1d2a40; --on-accent:#0f141b;
+  --accent:#7aa6f0; --accent-soft:#1d2a40; --on-accent:#0f141b; --reset:#ff8a3d; --on-reset:#1a0e05;
   --c-porteo:#3fbf86; --c-incid:#e2a83a; --c-fuera:#e2685d; --c-trans:#9a8fe0; --c-sin:#6b7684;
   --nxt:#7aa6f0; --nonxt:#6b7889; --noreg:#2f3a49; color-scheme:dark}
 *{box-sizing:border-box}
@@ -51,6 +51,9 @@ h2{font-family:var(--f-display);font-weight:600;font-size:1.25rem;margin:0;lette
 select,input[type=search],input[type=password]{font:500 .9rem var(--f-body);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:150px;max-width:100%}
 select.on{border-color:var(--accent);background:var(--accent-soft)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:26px}
+.btn.reset{background:var(--reset);border-color:var(--reset);color:var(--on-reset);align-self:flex-end}
+.btn.reset:hover{filter:brightness(1.08)}
+.btn.reset:focus-visible{outline-color:var(--reset)}
 .fchip{font:600 .78rem var(--f-body);background:var(--accent-soft);color:var(--fg);border:1px solid var(--accent);border-radius:999px;padding:3px 6px 3px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
 .fchip b{font-weight:600;color:var(--muted)}
 .fchip::after{content:"×";font-size:1rem;line-height:1;color:var(--accent)}
@@ -127,6 +130,7 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end}
       <label for="f_division">División<select id="f_division" data-k="division"></select></label>
       <label for="f_archivo">Archivo<select id="f_archivo" data-k="archivo"></select></label>
       <label for="fBuscar">Buscar<input type="search" id="fBuscar" placeholder="RPU, cliente, ID…"></label>
+      <button class="btn reset" id="btnRestablecer" type="button">Restablecer Filtros</button>
     </div>
     <div class="chips" id="chips"></div>
   </div>
@@ -268,7 +272,7 @@ function filtrosUI(){
     sel.value=F[k]; sel.classList.toggle('on',!!F[k]); });
   const act=KEYS.filter(k=>F[k]);
   $('chips').innerHTML = act.map(k=>`<button class="fchip" type="button" data-k="${k}"><b>${ETIQ[k]}:</b> ${esc(fmtVal(k,F[k]))}</button>`).join('')
-    + (act.length||$('fBuscar').value ? `<button class="btn ghost" type="button" id="limpiar" style="padding:3px 10px;font-size:.8rem">Limpiar filtros</button>` : '<span class="note">Sin filtros: mostrando todo el histórico</span>');
+    + (act.length||$('fBuscar').value ? '' : '<span class="note">Sin filtros: mostrando todo el histórico</span>');
 }
 const count=(rows,k)=>rows.reduce((m,r)=>(m[r[k]]=(m[r[k]]||0)+1,m),{});
 
@@ -344,7 +348,7 @@ $('pgPrev').onclick=()=>{page--;render();}; $('pgNext').onclick=()=>{page++;rend
 document.addEventListener('click',e=>{
   const s=e.target.closest('[data-set]'); if(s){ setF(JSON.parse(s.dataset.set)); return; }
   const c=e.target.closest('.fchip'); if(c){ F[c.dataset.k]=''; page=0; render(); return; }
-  if(e.target.id==='limpiar'){ KEYS.forEach(k=>F[k]=''); $('fBuscar').value=''; page=0; render(); }
+  if(e.target.closest('#btnRestablecer')){ KEYS.forEach(k=>F[k]=''); $('fBuscar').value=''; page=0; render(); }
 });
 document.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ') && e.target.matches('svg [data-set]')){ e.preventDefault(); setF(JSON.parse(e.target.dataset.set)); }});
 $('btnActualizar').onclick=()=>actualizar(true);
