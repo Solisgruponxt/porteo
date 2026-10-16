@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Porteo NXT</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: encabezado con acciones, barra de filtros fija con chips activos, indicadores, dos gráficas, matriz y detalle */
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --line:#d9dfe7; --fg:#18212d; --muted:#5b6778;
+  --accent:#1d4fa3; --accent-soft:#e3ebf8; --on-accent:#ffffff;
+  --c-porteo:#1f8a5b; --c-incid:#c98a12; --c-fuera:#c2453a; --c-trans:#6b5fb5; --c-sin:#9aa4b2;
+  --nxt:#1d4fa3; --nonxt:#8a96a6; --noreg:#d3d9e1;
+  --f-display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f141b; --surface:#171e28; --line:#2a3443; --fg:#e6ebf2; --muted:#98a3b3;
+  --accent:#7aa6f0; --accent-soft:#1d2a40; --on-accent:#0f141b;
+  --c-porteo:#3fbf86; --c-incid:#e2a83a; --c-fuera:#e2685d; --c-trans:#9a8fe0; --c-sin:#6b7684;
+  --nxt:#7aa6f0; --nonxt:#6b7889; --noreg:#2f3a49; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141b; --surface:#171e28; --line:#2a3443; --fg:#e6ebf2; --muted:#98a3b3;
+  --accent:#7aa6f0; --accent-soft:#1d2a40; --on-accent:#0f141b;
+  --c-porteo:#3fbf86; --c-incid:#e2a83a; --c-fuera:#e2685d; --c-trans:#9a8fe0; --c-sin:#6b7684;
+  --nxt:#7aa6f0; --nonxt:#6b7889; --noreg:#2f3a49; color-scheme:dark}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;margin:0}
+.wrap{max-width:1280px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-family:var(--f-display);font-weight:700;font-size:2.1rem;letter-spacing:.01em;margin:0;line-height:1;text-wrap:balance}
+h1 span{color:var(--accent)}
+.sub{color:var(--muted);margin:4px 0 0;max-width:65ch}
+h2{font-family:var(--f-display);font-weight:600;font-size:1.25rem;margin:0;letter-spacing:.02em}
+.acciones{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.estado{font-size:.8rem;color:var(--muted);width:100%;text-align:right}
+.btn{font:600 .9rem var(--f-body);border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);padding:9px 14px;border-radius:6px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible,select:focus-visible,input:focus-visible,.click:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.spin{width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:none}
+.cargando .spin{display:inline-block;animation:gira .8s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+.filters{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:grid;gap:8px;padding-block:8px;border-bottom:1px solid var(--line)}
+.frow{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.frow label{display:grid;gap:2px;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+select,input[type=search],input[type=password]{font:500 .9rem var(--f-body);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:150px;max-width:100%}
+select.on{border-color:var(--accent);background:var(--accent-soft)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:26px}
+.fchip{font:600 .78rem var(--f-body);background:var(--accent-soft);color:var(--fg);border:1px solid var(--accent);border-radius:999px;padding:3px 6px 3px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.fchip b{font-weight:600;color:var(--muted)}
+.fchip::after{content:"×";font-size:1rem;line-height:1;color:var(--accent)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:grid;gap:2px;text-align:left;font:inherit;color:inherit}
+button.kpi{cursor:pointer}
+button.kpi:hover{border-color:var(--accent)}
+.kpi.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.kpi b{font-family:var(--f-display);font-size:2rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.05}
+.kpi small{color:var(--muted)}
+.kpi .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--noreg);overflow:hidden;display:flex;margin-top:6px}
+.bar i{display:block;height:100%}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:grid;gap:10px;min-width:0}
+.panel .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.8rem;color:var(--muted)}
+.legend button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+.legend button.off{opacity:.35}
+.legend button::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--sw)}
+svg text{fill:var(--muted);font-family:var(--f-body);font-size:11px}
+svg .val{fill:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+svg .click{cursor:pointer}
+svg .click:hover{opacity:.8}
+svg .dim{opacity:.25}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--surface)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.obs{white-space:normal;min-width:220px;color:var(--muted)}
+.mono{font-family:var(--f-mono);font-size:.82rem}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--line)}
+.chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--sw)}
+.matrix td.num button{font:600 1.15rem var(--f-display);color:var(--fg);background:none;border:0;padding:2px 6px;border-radius:4px;cursor:pointer;font-variant-numeric:tabular-nums}
+.matrix td.num button:hover{background:var(--accent-soft)}
+.matrix td.num button.sel{background:var(--accent);color:var(--on-accent)}
+.pager{display:flex;align-items:center;gap:10px;justify-content:flex-end;color:var(--muted);font-size:.85rem;flex-wrap:wrap}
+.note{font-size:.8rem;color:var(--muted)}
+.avisos{font-size:.8rem;color:var(--muted);border-left:3px solid var(--c-incid);padding:6px 10px;background:var(--surface)}
+.avisos ul{margin:4px 0 0;padding-left:18px}
+dialog{border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);padding:0;width:min(460px,calc(100vw - 32px))}
+dialog::backdrop{background:rgb(10 15 25 / .45)}
+dialog form{display:grid;gap:14px;padding:18px}
+dialog label{display:grid;gap:4px;font-weight:600;font-size:.85rem}
+dialog .row{display:flex;gap:8px;justify-content:flex-end}
+.msg{background:var(--accent-soft);border-radius:6px;padding:10px 12px;font-size:.85rem}
+.proto{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--c-incid);font-weight:600}
+@media (prefers-reduced-motion:reduce){.cargando .spin{animation:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="proto" id="modo" hidden>Vista de prueba · datos de ejemplo</div>
+      <h1>Porteo <span>NXT</span></h1>
+      <p class="sub">Histórico consolidado de los archivos de porteo por permisionario. Cada servicio (RPU) se cruza con el Registro de Permisionarios y Clientes para saber si lo portea NXT.</p>
+    </div>
+    <div class="acciones">
+      <button class="btn ghost" id="btnActualizar" type="button"><span class="spin"></span>Actualizar</button>
+      <button class="btn" id="btnAgregar" type="button">+ Agregar archivo de porteo</button>
+      <div class="estado" id="estado">Cargando…</div>
+    </div>
+  </header>
+
+  <div class="avisos" id="avisos" hidden></div>
+
+  <div class="filters" role="search">
+    <div class="frow">
+      <label for="f_periodo">Periodo<select id="f_periodo" data-k="periodo"></select></label>
+      <label for="f_permisionario">Permisionario<select id="f_permisionario" data-k="permisionario"></select></label>
+      <label for="f_portea_nxt">Portea NXT<select id="f_portea_nxt" data-k="portea_nxt"></select></label>
+      <label for="f_categoria">Categoría<select id="f_categoria" data-k="categoria"></select></label>
+      <label for="f_division">División<select id="f_division" data-k="division"></select></label>
+      <label for="f_archivo">Archivo<select id="f_archivo" data-k="archivo"></select></label>
+      <label for="fBuscar">Buscar<input type="search" id="fBuscar" placeholder="RPU, cliente, ID…"></label>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid2">
+    <div class="panel">
+      <div class="hd"><h2>Servicios por periodo</h2><span class="note">clic en una barra o segmento para filtrar</span></div>
+      <div class="legend" id="legCat"></div>
+      <div class="scroll"><svg id="chPeriodo" role="img" aria-label="Servicios por periodo"></svg></div>
+    </div>
+    <div class="panel">
+      <div class="hd"><h2>Por permisionario</h2><span class="note">clic en un nombre o segmento para filtrar</span></div>
+      <div class="legend" id="legNxt"></div>
+      <div class="scroll"><svg id="chPerm" role="img" aria-label="Servicios por permisionario"></svg></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="hd"><h2>Categoría contra Portea NXT</h2><span class="note">clic en un número para filtrar</span></div>
+    <div class="scroll"><table class="matrix" id="matrix"></table></div>
+  </section>
+
+  <section class="panel">
+    <div class="hd"><h2>Detalle por servicio</h2><span class="note" id="detInfo"></span></div>
+    <div class="scroll"><table id="tabla"></table></div>
+    <div class="pager"><span id="pgInfo"></span><button class="btn ghost" id="pgPrev" type="button">Anterior</button><button class="btn ghost" id="pgNext" type="button">Siguiente</button></div>
+  </section>
+  <p class="note">Categorías: <b>En porteo</b> = Entra a porteo, Comunicado · <b>En porteo con incidencia</b> = Sin comunicación · <b>Fuera de porteo</b> = Facturar en zona, Fuera de porteo · <b>Transmisión</b>. Portea NXT viene del Registro de Permisionarios y Clientes (<span id="regInfo">–</span>), cruzado por ID de medidor y luego por RPU. "RPU aproximado": el RPU del Registro está en notación científica y solo hay una coincidencia del mismo permisionario.</p>
+</div>
+
+<dialog id="dlg">
+  <form id="frmSubir" method="dialog">
+    <h2>Agregar archivo de porteo</h2>
+    <label for="selPerm">Permisionario<select id="selPerm" required></select></label>
+    <label for="archivo">Archivo (Excel o Word)<input type="file" id="archivo" accept=".xlsx,.xls,.docx,.doc" required></label>
+    
+    <div class="msg" id="dlgMsg"></div>
+    <div class="row"><button class="btn ghost" type="button" id="btnCancelar">Cerrar</button><button class="btn" type="submit" id="btnSubir"><span class="spin"></span>Subir archivo</button></div>
+  </form>
+</dialog>
+
+<script>
+// ===== Configuración =====
+const API_URL = 'https://script.google.com/macros/s/AKfycbw1rjfj2YgGe3KrEGbjl8V-FO0ig2B0LlfMNLChXnMGZ48_FRXp-5IpwiVVPxe41evD/exec';   // liga /exec del Apps Script; vacío = vista de prueba con datos incluidos
+const DEMO = window.PORTEO_DEMO || null;   // {api:{...}, registro:{...}} solo en la vista de prueba
+
+// ===== Catálogos =====
+const CATEGORIAS = {'ENTRA A PORTEO':'En porteo','COMUNICADO':'En porteo','SIN COMUNICACION':'En porteo con incidencia',
+  'FACTURAR EN ZONA':'Fuera de porteo','FUERA DE PORTEO':'Fuera de porteo','TRANSMISION':'Transmisión'};
+const ALIAS = {'Demex 1':['Demex','Demex Bimbo PME'],'EGU':['EGU','EGU PME'],'A3T':['A3T Abengoa'],
+  'At&t':['At&t','AT&T'],'Grupo Dragon':['Grupo Dragon','Grupo Dragon DSP'],'EDF':['EDF']};
+const CATS = ['En porteo','En porteo con incidencia','Fuera de porteo','Transmisión','Sin estatus'];
+const CATVAR = {'En porteo':'--c-porteo','En porteo con incidencia':'--c-incid','Fuera de porteo':'--c-fuera','Transmisión':'--c-trans','Sin estatus':'--c-sin'};
+const NXT = ['Portea NXT','No portea NXT','Sin registro','Revisar','Sin dato'];
+const NXTVAR = {'Portea NXT':'--nxt','No portea NXT':'--nonxt','Sin registro':'--noreg','Revisar':'--c-incid','Sin dato':'--noreg'};
+const ETIQ = {periodo:'Periodo',permisionario:'Permisionario',portea_nxt:'Portea NXT',categoria:'Categoría',division:'División',archivo:'Archivo'};
+const KEYS = Object.keys(ETIQ);
+const MES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+const $ = id => document.getElementById(id);
+const n = v => v.toLocaleString('es-MX');
+const pct = (a,b) => b ? Math.round(a*100/b)+'%' : '–';
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtPer = p => { const [y,m]=String(p).split('-'); return m ? MES[+m-1]+' '+y : p; };
+const fmtVal = (k,v) => k==='periodo' ? fmtPer(v) : (v||'(vacío)');
+
+// ===== Registro (cruce Portea NXT) =====
+let REG = null;
+const nid = v => String(v||'').replace(/\s/g,'').toUpperCase();
+const rpu12 = v => { const d=String(v||'').split('.')[0].replace(/\D/g,''); return d.length>=8&&d.length<=12 ? d.padStart(12,'0') : ''; };
+function claveCientifica(s){ const m=String(s||'').trim().match(/^(\d)\.?(\d*)E\+(\d+)$/i); return m ? m[1]+m[2]+'|'+(+m[3]+1) : null; }
+function comoExcel(rpu){ const [man,exp]=Number(rpu).toExponential(5).split('e'); return man.replace(/0+$/,'').replace(/\.$/,'')+'E+'+(+exp); }
+function indexarRegistro(reg){
+  const byId=new Map(), byRpu=new Map(), byAprox=new Map(), add=(m,k,x)=>{ if(!m.has(k)) m.set(k,[]); m.get(k).push(x); };
+  reg.filas.forEach(f=>{ const x={id:f[0],rpu:f[1],perm:f[2],cliente:f[3],portea:f[4]};
+    if(x.id) add(byId,nid(x.id),x);
+    const ap=claveCientifica(x.rpu); if(ap) add(byAprox,ap,x); else if(rpu12(x.rpu)) add(byRpu,rpu12(x.rpu),x); });
+  return {byId,byRpu,byAprox,fuente:reg.fuente,fecha:reg.fecha};
+}
+function cruzar(r){
+  const alias=ALIAS[r.permisionario]||[r.permisionario];
+  let c=REG.byId.get(nid(r.id_medidor)), metodo='ID';
+  if(!c){ c=REG.byRpu.get(r.rpu); metodo='RPU'; }
+  if(!c){ const pos=(REG.byAprox.get(claveCientifica(comoExcel(r.rpu)))||[]).filter(x=>alias.includes(x.perm));
+          c = pos.length===1 ? pos : null; metodo='RPU aproximado'; }
+  if(!c) return {portea_nxt:'Sin registro', metodo_cruce:'', cliente_reg:''};
+  const v=new Set(c.map(x=>x.portea).filter(x=>x!==''));
+  return {portea_nxt: v.size===1 ? ([...v][0]===1?'Portea NXT':'No portea NXT') : (v.size?'Revisar':'Sin dato'), metodo_cruce:metodo, cliente_reg:c[0].cliente};
+}
+
+// ===== Datos =====
+let ROWS=[], CARPETAS=[], page=0; const PAGE=50;
+const F = {}; KEYS.forEach(k=>F[k]='');
+
+function cargarRespuesta(api){
+  CARPETAS = api.carpetas||[];
+  ROWS = api.filas.map(f=>{ const r=Object.fromEntries(api.campos.map((c,i)=>[c,f[i]??'']));
+    Object.assign(r, cruzar(r)); r.cliente = r.cliente || r.cliente_reg; r.categoria = CATEGORIAS[r.estatus] || 'Sin estatus'; return r; });
+  KEYS.forEach(k=>{ if(F[k] && !ROWS.some(r=>r[k]===F[k])) F[k]=''; });
+  const hora = api.actualizado ? new Date(api.actualizado).toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'}) : '';
+  $('estado').textContent = `${hora?'Actualizado '+hora+' · ':''}${n(api.archivos??0)} archivo(s)${api.procesados?' · '+api.procesados+' leído(s) ahora':''}`;
+  const av=api.avisos||[];
+  $('avisos').hidden=!av.length; $('avisos').innerHTML = av.length ? `<b>Archivos con observaciones</b><ul>${av.map(a=>`<li>${esc(a)}</li>`).join('')}</ul>` : '';
+  fillSel($('selPerm'), CARPETAS, 'Selecciona un permisionario');
+  render();
+}
+async function pedir(params){
+  const r = await fetch(API_URL+'?'+new URLSearchParams(params), {redirect:'follow'});
+  const j = await r.json(); if(!j.ok) throw new Error(j.error||'Error del servidor'); return j;
+}
+async function actualizar(forzar){
+  const b=$('btnActualizar'); b.disabled=true; b.classList.add('cargando'); $('estado').textContent='Leyendo carpetas de Drive…';
+  try{
+    if(!API_URL){ await new Promise(r=>setTimeout(r,400)); cargarRespuesta(DEMO.api);
+      $('estado').textContent='Vista de prueba: Actualizar leerá Drive cuando el dashboard esté publicado con el Apps Script'; }
+    else cargarRespuesta(await pedir({action:'data', refresh: forzar?'1':'0'}));
+  }catch(e){ $('estado').textContent='No se pudo actualizar: '+e.message+'. Intenta de nuevo.'; }
+  finally{ b.disabled=false; b.classList.remove('cargando'); }
+}
+
+// ===== Filtros dinámicos =====
+function pasa(r, salvo){ const q=$('fBuscar').value.trim().toLowerCase();
+  return KEYS.every(k=>k===salvo || !F[k] || r[k]===F[k])
+    && (!q || [r.rpu,r.cliente,r.id_medidor,r.observaciones,r.estatus].join(' ').toLowerCase().includes(q)); }
+const filtradas = () => ROWS.filter(r=>pasa(r));
+function setF(obj){ // alterna: si ya está seleccionado exactamente eso, lo quita
+  const igual = Object.entries(obj).every(([k,v])=>F[k]===v);
+  Object.entries(obj).forEach(([k,v])=>F[k]= igual ? '' : v); page=0; render(); }
+function fillSel(sel, vals, all){ const cur=sel.value; sel.innerHTML=`<option value="">${all}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join(''); sel.value=vals.includes(cur)?cur:''; }
+function orden(k,vals){ if(k==='categoria') return CATS.filter(v=>vals.includes(v)); if(k==='portea_nxt') return NXT.filter(v=>vals.includes(v)); return vals.sort(); }
+function filtrosUI(){
+  KEYS.forEach(k=>{ const sel=$('f_'+k), cnt={};
+    ROWS.forEach(r=>{ if(pasa(r,k)) cnt[r[k]]=(cnt[r[k]]||0)+1; });
+    if(F[k] && !(F[k] in cnt)) cnt[F[k]]=0;
+    sel.innerHTML = `<option value="">Todos (${n(Object.values(cnt).reduce((a,b)=>a+b,0))})</option>` +
+      orden(k,Object.keys(cnt)).map(v=>`<option value="${esc(v)}">${esc(fmtVal(k,v))} (${n(cnt[v])})</option>`).join('');
+    sel.value=F[k]; sel.classList.toggle('on',!!F[k]); });
+  const act=KEYS.filter(k=>F[k]);
+  $('chips').innerHTML = act.map(k=>`<button class="fchip" type="button" data-k="${k}"><b>${ETIQ[k]}:</b> ${esc(fmtVal(k,F[k]))}</button>`).join('')
+    + (act.length||$('fBuscar').value ? `<button class="btn ghost" type="button" id="limpiar" style="padding:3px 10px;font-size:.8rem">Limpiar filtros</button>` : '<span class="note">Sin filtros: mostrando todo el histórico</span>');
+}
+const count=(rows,k)=>rows.reduce((m,r)=>(m[r[k]]=(m[r[k]]||0)+1,m),{});
+
+// ===== Vistas =====
+function kpis(rows){
+  const total=rows.length, rpus=new Set(rows.map(r=>r.rpu)).size, cat=count(rows,'categoria'), nx=count(rows,'portea_nxt');
+  const enP=cat['En porteo']||0, inc=cat['En porteo con incidencia']||0;
+  const seg=(o,keys,vars)=>keys.map(k=>`<i style="width:${total?(o[k]||0)*100/total:0}%;background:var(${vars[k]})"></i>`).join('');
+  const sel=(k,v)=>F[k]===v?' sel':'';
+  $('kpis').innerHTML = `
+   <div class="kpi"><span class="lbl">Registros</span><b>${n(total)}</b><small>${n(rpus)} RPU distintos · ${new Set(rows.map(r=>r.periodo)).size} periodo(s) · ${new Set(rows.map(r=>r.permisionario)).size} permisionario(s)</small></div>
+   <button class="kpi${sel('categoria','En porteo')}" type="button" data-set='{"categoria":"En porteo"}'><span class="lbl">En porteo</span><b>${pct(enP+inc,total)}</b><small>${n(enP)} en porteo · ${n(inc)} con incidencia</small><div class="bar">${seg(cat,CATS,CATVAR)}</div></button>
+   <button class="kpi${sel('portea_nxt','Portea NXT')}" type="button" data-set='{"portea_nxt":"Portea NXT"}'><span class="lbl">Portea NXT</span><b>${n(nx['Portea NXT']||0)}</b><small>${pct(nx['Portea NXT']||0,total)} de los registros</small><div class="bar">${seg(nx,NXT,NXTVAR)}</div></button>
+   <button class="kpi${sel('portea_nxt','No portea NXT')}" type="button" data-set='{"portea_nxt":"No portea NXT"}'><span class="lbl">No portea NXT</span><b>${n(nx['No portea NXT']||0)}</b><small>${n(nx['Sin registro']||0)} sin registro en el Registro</small></button>`;
+}
+function legends(){
+  $('legCat').innerHTML = CATS.filter(c=>ROWS.some(r=>r.categoria===c)).map(c=>`<button type="button" class="${F.categoria&&F.categoria!==c?'off':''}" style="--sw:var(${CATVAR[c]})" data-set='${JSON.stringify({categoria:c})}'>${c}</button>`).join('');
+  $('legNxt').innerHTML = NXT.filter(c=>ROWS.some(r=>r.portea_nxt===c)).map(c=>`<button type="button" class="${F.portea_nxt&&F.portea_nxt!==c?'off':''}" style="--sw:var(${NXTVAR[c]})" data-set='${JSON.stringify({portea_nxt:c})}'>${c}</button>`).join('');
+}
+function svgEl(svg,w,h){svg.setAttribute('viewBox',`0 0 ${w} ${h}`);svg.setAttribute('width',w);svg.setAttribute('height',h);svg.style.maxWidth='100%';svg.style.height='auto';}
+function niceMax(v){ if(v<=4) return 4; const e=Math.pow(10,Math.floor(Math.log10(v))), f=v/e; return (f<=1?1:f<=2?2:f<=5?5:10)*e; }
+const attrSet = o => `data-set='${esc(JSON.stringify(o))}' tabindex="0" role="button"`;
+
+function chartPeriodo(rows){
+  const svg=$('chPeriodo'), pers=[...new Set(rows.map(r=>r.periodo))].sort();
+  const W=Math.max(420,pers.length*80+60), H=260, L=44, B=30, T=20, ih=H-B-T, step=(W-L-10)/Math.max(1,pers.length), bw=Math.min(56,step*0.6);
+  const by=pers.map(p=>{const rr=rows.filter(r=>r.periodo===p);return {p,t:rr.length,c:count(rr,'categoria')};});
+  const max=niceMax(Math.max(1,...by.map(b=>b.t)));
+  let s=''; for(let i=0;i<=4;i++){const v=max*i/4,y=T+ih-ih*i/4;s+=`<line x1="${L}" x2="${W-6}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L-6}" y="${y+4}" text-anchor="end">${n(v)}</text>`;}
+  by.forEach((b,i)=>{let y=T+ih;const x=L+step*i+(step-bw)/2;
+    CATS.forEach(c=>{const v=b.c[c]||0;if(!v)return;const h=ih*v/max;y-=h;
+      s+=`<rect class="click" ${attrSet({periodo:b.p,categoria:c})} x="${x}" y="${y}" width="${bw}" height="${h}" fill="var(${CATVAR[c]})"><title>${fmtPer(b.p)} · ${c}: ${n(v)}</title></rect>`;});
+    s+=`<text class="val" x="${x+bw/2}" y="${y-5}" text-anchor="middle">${n(b.t)}</text><text class="click" ${attrSet({periodo:b.p})} x="${x+bw/2}" y="${H-10}" text-anchor="middle">${fmtPer(b.p)}</text>`;});
+  if(!pers.length) s+=`<text x="${W/2}" y="${H/2}" text-anchor="middle">Sin datos con estos filtros</text>`;
+  svgEl(svg,W,H); svg.innerHTML=s;
+}
+function chartPerm(rows){
+  const svg=$('chPerm'), perms=[...new Set(rows.map(r=>r.permisionario))].sort();
+  const W=520, rowH=46, T=10, L=110, R=60, H=Math.max(120,T+perms.length*rowH+10), iw=W-L-R;
+  const by=perms.map(p=>{const rr=rows.filter(r=>r.permisionario===p);return {p,t:rr.length,c:count(rr,'portea_nxt')};});
+  const max=Math.max(1,...by.map(b=>b.t)); let s='';
+  by.forEach((b,i)=>{const y=T+i*rowH;let x=L;
+    s+=`<text class="val click" ${attrSet({permisionario:b.p})} x="${L-8}" y="${y+19}" text-anchor="end">${esc(b.p)}</text>`;
+    NXT.forEach(k=>{const v=b.c[k]||0;if(!v)return;const w=iw*v/max;
+      s+=`<rect class="click" ${attrSet({permisionario:b.p,portea_nxt:k})} x="${x}" y="${y+6}" width="${w}" height="20" fill="var(${NXTVAR[k]})"><title>${esc(b.p)} · ${k}: ${n(v)}</title></rect>`;x+=w;});
+    s+=`<text x="${x+6}" y="${y+20}" class="val">${n(b.t)}</text><text x="${L}" y="${y+40}">${n(b.c['Portea NXT']||0)} portea NXT · ${n(b.c['No portea NXT']||0)} no · ${n(b.c['Sin registro']||0)} sin registro</text>`;});
+  if(!perms.length) s+=`<text x="${W/2}" y="60" text-anchor="middle">Sin datos con estos filtros</text>`;
+  svgEl(svg,W,H); svg.innerHTML=s;
+}
+function matrix(rows){
+  const cats=CATS.filter(c=>rows.some(r=>r.categoria===c)), nx=NXT.filter(x=>rows.some(r=>r.portea_nxt===x));
+  const cell=(c,x)=>rows.filter(r=>r.categoria===c&&(!x||r.portea_nxt===x)).length;
+  const btn=(o,v)=>`<button type="button" class="${Object.entries(o).every(([k,val])=>F[k]===val)?'sel':''}" data-set='${esc(JSON.stringify(o))}'>${n(v)}</button>`;
+  $('matrix').innerHTML = !rows.length ? '<tbody><tr><td class="note">Sin datos con estos filtros</td></tr></tbody>' :
+    `<thead><tr><th>Categoría</th>${nx.map(x=>`<th class="num">${x}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>`+
+    cats.map(c=>`<tr><td><span class="chip" style="--sw:var(${CATVAR[c]})">${c}</span></td>${nx.map(x=>`<td class="num">${btn({categoria:c,portea_nxt:x},cell(c,x))}</td>`).join('')}<td class="num">${btn({categoria:c},cell(c))}</td></tr>`).join('')+'</tbody>';
+}
+function tabla(rows){
+  const pages=Math.max(1,Math.ceil(rows.length/PAGE)); page=Math.min(page,pages-1);
+  const sl=rows.slice(page*PAGE,(page+1)*PAGE);
+  $('tabla').innerHTML = `<thead><tr><th>RPU</th><th>Periodo</th><th>Permisionario</th><th>Cliente</th><th>ID medidor</th><th>Estatus en archivo</th><th>Categoría</th><th>Portea NXT</th><th>Cruce</th><th>Observaciones</th><th>Archivo</th></tr></thead><tbody>`+
+    sl.map(r=>`<tr><td class="mono">${r.rpu}</td><td>${fmtPer(r.periodo)}</td><td>${esc(r.permisionario)}</td><td>${esc(r.cliente)||'<span class="note">—</span>'}</td><td class="mono">${esc(r.id_medidor)}</td><td>${esc(r.estatus)}</td>
+      <td><span class="chip" style="--sw:var(${CATVAR[r.categoria]})">${r.categoria}</span></td><td><span class="chip" style="--sw:var(${NXTVAR[r.portea_nxt]})">${r.portea_nxt}</span></td><td class="note">${r.metodo_cruce||'—'}</td><td class="obs">${esc(r.observaciones)}</td><td class="note">${esc(r.archivo)}</td></tr>`).join('')+'</tbody>';
+  $('pgInfo').textContent = rows.length ? `${n(page*PAGE+1)}–${n(page*PAGE+sl.length)} de ${n(rows.length)}` : 'Sin resultados';
+  $('pgPrev').disabled=page===0; $('pgNext').disabled=page>=pages-1;
+}
+function render(){ const rows=filtradas(); filtrosUI(); legends(); kpis(rows); chartPeriodo(rows); chartPerm(rows); matrix(rows); tabla(rows); }
+
+// ===== Eventos =====
+KEYS.forEach(k=>$('f_'+k).addEventListener('change',e=>{F[k]=e.target.value; page=0; render();}));
+$('fBuscar').addEventListener('input',()=>{page=0;render();});
+$('pgPrev').onclick=()=>{page--;render();}; $('pgNext').onclick=()=>{page++;render();};
+document.addEventListener('click',e=>{
+  const s=e.target.closest('[data-set]'); if(s){ setF(JSON.parse(s.dataset.set)); return; }
+  const c=e.target.closest('.fchip'); if(c){ F[c.dataset.k]=''; page=0; render(); return; }
+  if(e.target.id==='limpiar'){ KEYS.forEach(k=>F[k]=''); $('fBuscar').value=''; page=0; render(); }
+});
+document.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ') && e.target.matches('svg [data-set]')){ e.preventDefault(); setF(JSON.parse(e.target.dataset.set)); }});
+$('btnActualizar').onclick=()=>actualizar(true);
+
+const dlg=$('dlg'), msgBase='Las opciones son las carpetas que existen en Drive dentro de "Porteo Dashboard".';
+$('btnAgregar').onclick=()=>{ $('dlgMsg').textContent=msgBase; if(F.permisionario) $('selPerm').value=F.permisionario; dlg.showModal(); };
+$('btnCancelar').onclick=()=>dlg.close();
+$('frmSubir').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const p=$('selPerm').value, f=$('archivo').files[0];
+  if(!p||!f){ $('dlgMsg').textContent='Elige un permisionario y un archivo.'; return; }
+  if(!API_URL){ $('dlgMsg').innerHTML=`Listo para enviar <b>${esc(f.name)}</b> a <b>${esc(p)}</b>. En la vista de prueba no se sube; se activa al publicar con el Apps Script.`; return; }
+  const b=$('btnSubir'); b.disabled=true; b.classList.add('cargando'); $('dlgMsg').textContent='Subiendo y leyendo el archivo…';
+  try{
+    const base64 = await new Promise((ok,ko)=>{ const fr=new FileReader(); fr.onload=()=>ok(String(fr.result).split(',')[1]); fr.onerror=()=>ko(new Error('No se pudo leer el archivo')); fr.readAsDataURL(f); });
+    const r = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({accion:'subir',permisionario:p,nombre:f.name,tipo:f.type,base64})});
+    const j = await r.json(); if(!j.ok) throw new Error(j.error);
+    $('dlgMsg').innerHTML=`Se guardó <b>${esc(j.archivo)}</b> en la carpeta <b>${esc(j.carpeta)}</b> y el dashboard ya lo incluye.`;
+    $('archivo').value=''; cargarRespuesta(j);
+  }catch(err){ $('dlgMsg').textContent='No se subió: '+err.message; }
+  finally{ b.disabled=false; b.classList.remove('cargando'); }
+});
+
+// ===== Inicio =====
+(async()=>{
+  $('modo').hidden = !!API_URL;
+  try{
+    const reg = DEMO ? DEMO.registro : await (await fetch('registro_nxt.json')).json();
+    REG = indexarRegistro(reg); $('regInfo').textContent = `${reg.fuente}, ${reg.fecha}`;
+  }catch(e){ $('estado').textContent='No se pudo cargar el Registro de Permisionarios: '+e.message; return; }
+  if(API_URL){ try{ cargarRespuesta(await pedir({action:'data'})); }catch(e){ $('estado').textContent='No se pudo leer Drive: '+e.message; } }
+  else cargarRespuesta(DEMO.api);
+})();
+</script>
