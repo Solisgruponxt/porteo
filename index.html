@@ -95,6 +95,17 @@ td.obs{white-space:normal;min-width:220px;color:var(--muted)}
 .note{font-size:.8rem;color:var(--muted)}
 .avisos{font-size:.8rem;color:var(--muted);border-left:3px solid var(--c-incid);padding:6px 10px;background:var(--surface)}
 .avisos ul{margin:4px 0 0;padding-left:18px}
+.comp tr.fila{cursor:pointer}
+.comp tr.fila:hover td{background:var(--accent-soft)}
+.comp tr.fila.sel td{background:var(--accent-soft);border-bottom-color:var(--accent)}
+.comp td small{display:block;color:var(--muted);font-size:.75rem}
+.comp .tasa{font:600 1.1rem var(--f-display);font-variant-numeric:tabular-nums}
+.sube{color:var(--c-porteo);font-weight:600}
+.baja{color:var(--c-fuera);font-weight:600}
+.vacio{padding:14px;border:1px dashed var(--line);border-radius:8px;color:var(--muted)}
+fieldset.tipos{border:1px solid var(--line);border-radius:6px;padding:8px 12px;display:flex;gap:18px;margin:0}
+fieldset.tipos legend{font-weight:600;font-size:.85rem;padding:0 4px}
+fieldset.tipos label{display:flex;flex-direction:row;align-items:center;gap:6px;font-weight:500}
 dialog{border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);padding:0;width:min(460px,calc(100vw - 32px))}
 dialog::backdrop{background:rgb(10 15 25 / .45)}
 dialog form{display:grid;gap:14px;padding:18px}
@@ -123,6 +134,7 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end}
 
   <div class="filters" role="search">
     <div class="frow">
+      <label for="f_tipo">Tipo<select id="f_tipo" data-k="tipo"></select></label>
       <label for="f_periodo">Periodo<select id="f_periodo" data-k="periodo"></select></label>
       <label for="f_permisionario">Permisionario<select id="f_permisionario" data-k="permisionario"></select></label>
       <label for="f_portea_nxt">Portea NXT<select id="f_portea_nxt" data-k="portea_nxt"></select></label>
@@ -150,6 +162,12 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end}
     </div>
   </section>
 
+  <section class="panel" id="secComp">
+    <div class="hd"><h2>Previo contra Porteo</h2><span class="note">por mes y permisionario · clic en una fila para ver qué RPU cambiaron</span></div>
+    <div class="scroll"><table class="comp" id="comp"></table></div>
+    <div id="compDet"></div>
+  </section>
+
   <section class="panel">
     <div class="hd"><h2>Categoría contra Portea NXT</h2><span class="note">clic en un número para filtrar</span></div>
     <div class="scroll"><table class="matrix" id="matrix"></table></div>
@@ -160,13 +178,17 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end}
     <div class="scroll"><table id="tabla"></table></div>
     <div class="pager"><span id="pgInfo"></span><button class="btn ghost" id="pgPrev" type="button">Anterior</button><button class="btn ghost" id="pgNext" type="button">Siguiente</button></div>
   </section>
-  <p class="note">Categorías: <b>En porteo</b> = Entra a porteo, Comunicado · <b>En porteo con incidencia</b> = Sin comunicación · <b>Fuera de porteo</b> = Facturar en zona, Fuera de porteo · <b>Transmisión</b>. Portea NXT viene del Registro de Permisionarios y Clientes (<span id="regInfo">–</span>), cruzado por ID de medidor y luego por RPU. "RPU aproximado": el RPU del Registro está en notación científica y solo hay una coincidencia del mismo permisionario.</p>
+  <p class="note">Las gráficas, la matriz y el detalle muestran el <b>Porteo</b> mientras el filtro Tipo esté en Porteo; la comparativa siempre usa ambos. <b>Mejor resultado</b>: el archivo con mayor porcentaje de servicios En porteo (diferencias menores a 0.1 puntos cuentan como Igual). Categorías: <b>En porteo</b> = Entra a porteo, Comunicado · <b>En porteo con incidencia</b> = Sin comunicación · <b>Fuera de porteo</b> = Facturar en zona, Fuera de porteo · <b>Transmisión</b>. Portea NXT viene del Registro de Permisionarios y Clientes (<span id="regInfo">–</span>), cruzado por ID de medidor y luego por RPU. "RPU aproximado": el RPU del Registro está en notación científica y solo hay una coincidencia del mismo permisionario.</p>
 </div>
 
 <dialog id="dlg">
   <form id="frmSubir" method="dialog">
     <h2>Agregar archivo de porteo</h2>
     <label for="selPerm">Permisionario<select id="selPerm" required></select></label>
+    <fieldset class="tipos"><legend>Tipo de archivo</legend>
+      <label for="tPorteo"><input type="radio" name="tipoArchivo" id="tPorteo" value="Porteo"> Porteo</label>
+      <label for="tPrevio"><input type="radio" name="tipoArchivo" id="tPrevio" value="Previo"> Previo</label>
+    </fieldset>
     <label for="archivo">Archivo (Excel o Word)<input type="file" id="archivo" accept=".xlsx,.xls,.docx,.doc" required></label>
     
     <div class="msg" id="dlgMsg"></div>
@@ -188,7 +210,7 @@ const CATS = ['En porteo','En porteo con incidencia','Fuera de porteo','Transmis
 const CATVAR = {'En porteo':'--c-porteo','En porteo con incidencia':'--c-incid','Fuera de porteo':'--c-fuera','Transmisión':'--c-trans','Sin estatus':'--c-sin'};
 const NXT = ['Portea NXT','No portea NXT','Sin registro','Revisar','Sin dato'];
 const NXTVAR = {'Portea NXT':'--nxt','No portea NXT':'--nonxt','Sin registro':'--noreg','Revisar':'--c-incid','Sin dato':'--noreg'};
-const ETIQ = {periodo:'Periodo',permisionario:'Permisionario',portea_nxt:'Portea NXT',categoria:'Categoría',division:'División',archivo:'Archivo'};
+const ETIQ = {tipo:'Tipo',periodo:'Periodo',permisionario:'Permisionario',portea_nxt:'Portea NXT',categoria:'Categoría',division:'División',archivo:'Archivo'};
 const KEYS = Object.keys(ETIQ);
 const MES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
@@ -224,13 +246,15 @@ function cruzar(r){
 }
 
 // ===== Datos =====
-let ROWS=[], CARPETAS=[], page=0; const PAGE=50;
+let ROWS=[], CARPETAS=[], page=0, cargado=false; const PAGE=50;
 const F = {}; KEYS.forEach(k=>F[k]='');
 
 function cargarRespuesta(api){
   CARPETAS = api.carpetas||[];
   ROWS = api.filas.map(f=>{ const r=Object.fromEntries(api.campos.map((c,i)=>[c,f[i]??'']));
-    Object.assign(r, cruzar(r)); r.cliente = r.cliente || r.cliente_reg; r.categoria = CATEGORIAS[r.estatus] || 'Sin estatus'; return r; });
+    Object.assign(r, cruzar(r)); r.cliente = r.cliente || r.cliente_reg; r.categoria = CATEGORIAS[r.estatus] || 'Sin estatus';
+    r.tipo = r.tipo || 'Porteo'; return r; });
+  if(!cargado){ restablecer(false); cargado=true; }
   KEYS.forEach(k=>{ if(F[k] && !ROWS.some(r=>r[k]===F[k])) F[k]=''; });
   const hora = api.actualizado ? new Date(api.actualizado).toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'}) : '';
   $('estado').textContent = `${hora?'Actualizado '+hora+' · ':''}${n(api.archivos??0)} archivo(s)${api.procesados?' · '+api.procesados+' leído(s) ahora':''}`;
@@ -258,11 +282,13 @@ function pasa(r, salvo){ const q=$('fBuscar').value.trim().toLowerCase();
   return KEYS.every(k=>k===salvo || !F[k] || r[k]===F[k])
     && (!q || [r.rpu,r.cliente,r.id_medidor,r.observaciones,r.estatus].join(' ').toLowerCase().includes(q)); }
 const filtradas = () => ROWS.filter(r=>pasa(r));
+function restablecer(pintar=true){ // por defecto se ve el Porteo, para no sumar dos veces el mismo mes
+  KEYS.forEach(k=>F[k]=''); F.tipo = ROWS.some(r=>r.tipo==='Porteo') ? 'Porteo' : ''; $('fBuscar').value=''; page=0; if(pintar) render(); }
 function setF(obj){ // alterna: si ya está seleccionado exactamente eso, lo quita
   const igual = Object.entries(obj).every(([k,v])=>F[k]===v);
   Object.entries(obj).forEach(([k,v])=>F[k]= igual ? '' : v); page=0; render(); }
 function fillSel(sel, vals, all){ const cur=sel.value; sel.innerHTML=`<option value="">${all}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join(''); sel.value=vals.includes(cur)?cur:''; }
-function orden(k,vals){ if(k==='categoria') return CATS.filter(v=>vals.includes(v)); if(k==='portea_nxt') return NXT.filter(v=>vals.includes(v)); return vals.sort(); }
+function orden(k,vals){ if(k==='tipo') return ['Porteo','Previo'].filter(v=>vals.includes(v)); if(k==='categoria') return CATS.filter(v=>vals.includes(v)); if(k==='portea_nxt') return NXT.filter(v=>vals.includes(v)); return vals.sort(); }
 function filtrosUI(){
   KEYS.forEach(k=>{ const sel=$('f_'+k), cnt={};
     ROWS.forEach(r=>{ if(pasa(r,k)) cnt[r[k]]=(cnt[r[k]]||0)+1; });
@@ -333,13 +359,63 @@ function matrix(rows){
 function tabla(rows){
   const pages=Math.max(1,Math.ceil(rows.length/PAGE)); page=Math.min(page,pages-1);
   const sl=rows.slice(page*PAGE,(page+1)*PAGE);
-  $('tabla').innerHTML = `<thead><tr><th>RPU</th><th>Periodo</th><th>Permisionario</th><th>Cliente</th><th>ID medidor</th><th>Estatus en archivo</th><th>Categoría</th><th>Portea NXT</th><th>Cruce</th><th>Observaciones</th><th>Archivo</th></tr></thead><tbody>`+
-    sl.map(r=>`<tr><td class="mono">${r.rpu}</td><td>${fmtPer(r.periodo)}</td><td>${esc(r.permisionario)}</td><td>${esc(r.cliente)||'<span class="note">—</span>'}</td><td class="mono">${esc(r.id_medidor)}</td><td>${esc(r.estatus)}</td>
+  $('tabla').innerHTML = `<thead><tr><th>RPU</th><th>Tipo</th><th>Periodo</th><th>Permisionario</th><th>Cliente</th><th>ID medidor</th><th>Estatus en archivo</th><th>Categoría</th><th>Portea NXT</th><th>Cruce</th><th>Observaciones</th><th>Archivo</th></tr></thead><tbody>`+
+    sl.map(r=>`<tr><td class="mono">${r.rpu}</td><td>${r.tipo}</td><td>${fmtPer(r.periodo)}</td><td>${esc(r.permisionario)}</td><td>${esc(r.cliente)||'<span class="note">—</span>'}</td><td class="mono">${esc(r.id_medidor)}</td><td>${esc(r.estatus)}</td>
       <td><span class="chip" style="--sw:var(${CATVAR[r.categoria]})">${r.categoria}</span></td><td><span class="chip" style="--sw:var(${NXTVAR[r.portea_nxt]})">${r.portea_nxt}</span></td><td class="note">${r.metodo_cruce||'—'}</td><td class="obs">${esc(r.observaciones)}</td><td class="note">${esc(r.archivo)}</td></tr>`).join('')+'</tbody>';
   $('pgInfo').textContent = rows.length ? `${n(page*PAGE+1)}–${n(page*PAGE+sl.length)} de ${n(rows.length)}` : 'Sin resultados';
   $('pgPrev').disabled=page===0; $('pgNext').disabled=page>=pages-1;
 }
-function render(){ const rows=filtradas(); filtrosUI(); legends(); kpis(rows); chartPeriodo(rows); chartPerm(rows); matrix(rows); tabla(rows); }
+// ===== Comparativa Previo contra Porteo =====
+function resumen(arr){ const c=count(arr,'categoria'), t=arr.length, en=c['En porteo']||0;
+  return {t, en, inc:c['En porteo con incidencia']||0, tasa: t? en*100/t : 0}; }
+function grupoComp(rows){
+  const g=new Map();
+  rows.forEach(r=>{ const k=r.periodo+'|'+r.permisionario;
+    if(!g.has(k)) g.set(k,{periodo:r.periodo, perm:r.permisionario, Previo:[], Porteo:[]});
+    g.get(k)[r.tipo==='Previo'?'Previo':'Porteo'].push(r); });
+  return [...g.values()].filter(x=>x.Previo.length).sort((a,b)=>b.periodo.localeCompare(a.periodo)||a.perm.localeCompare(b.perm));
+}
+function cambios(x){
+  const pv=new Map(x.Previo.map(r=>[r.rpu,r])), po=new Map(x.Porteo.map(r=>[r.rpu,r])), out=[];
+  new Set([...pv.keys(),...po.keys()]).forEach(rpu=>{ const a=pv.get(rpu), b=po.get(rpu);
+    let tipo='';
+    if(a&&!b) tipo='Solo en previo'; else if(!a&&b) tipo='Solo en porteo';
+    else if(a.categoria!=='En porteo' && b.categoria==='En porteo') tipo='Entró a porteo';
+    else if(a.categoria==='En porteo' && b.categoria!=='En porteo') tipo='Salió de porteo';
+    else if(a.estatus!==b.estatus) tipo='Cambió de estatus';
+    if(tipo) out.push({rpu, tipo, a, b, r:b||a}); });
+  return out;
+}
+function comparativa(rows){
+  const gs=grupoComp(rows);
+  if(!gs.length){ $('comp').innerHTML=''; $('compDet').innerHTML=`<div class="vacio">Todavía no hay archivos <b>Previo</b> con estos filtros. Súbelos con <b>Agregar archivo de porteo</b> y el tipo <b>Previo</b>; aquí se compararán contra el Porteo del mismo mes y permisionario.</div>`; return; }
+  const celda=s=>s.t?`<span class="tasa">${s.tasa.toFixed(1)}%</span><small>${n(s.en)} de ${n(s.t)} en porteo${s.inc?' · '+n(s.inc)+' con incidencia':''}</small>`:'<span class="note">Pendiente</span>';
+  $('comp').innerHTML = `<thead><tr><th>Mes</th><th>Permisionario</th><th>Previo</th><th>Porteo</th><th class="num">Diferencia</th><th class="num">Entraron</th><th class="num">Salieron</th><th>Mejor resultado</th></tr></thead><tbody>`+
+    gs.map(x=>{ const a=resumen(x.Previo), b=resumen(x.Porteo), cs=cambios(x);
+      const ent=cs.filter(c=>c.tipo==='Entró a porteo').length, sal=cs.filter(c=>c.tipo==='Salió de porteo').length;
+      let dif='—', mejor='<span class="note">Esperando porteo</span>';
+      if(b.t){ const d=b.tasa-a.tasa;
+        dif = Math.abs(d)<0.1 ? '0.0 pts' : `<span class="${d>0?'sube':'baja'}">${d>0?'+':''}${d.toFixed(1)} pts</span>`;
+        mejor = Math.abs(d)<0.1 ? `<span class="chip" style="--sw:var(--c-sin)">Igual</span>`
+          : `<span class="chip" style="--sw:var(${d>0?'--accent':'--c-trans'})">${d>0?'Porteo':'Previo'}</span> <span class="note">${Math.abs(d).toFixed(1)} pts arriba</span>`; }
+      const sel = F.periodo===x.periodo && F.permisionario===x.perm;
+      return `<tr class="fila${sel?' sel':''}" data-set='${esc(JSON.stringify({periodo:x.periodo,permisionario:x.perm}))}' tabindex="0">
+        <td>${fmtPer(x.periodo)}</td><td>${esc(x.perm)}</td><td>${celda(a)}</td><td>${celda(b)}</td><td class="num">${dif}</td>
+        <td class="num">${b.t?`<span class="sube">${n(ent)}</span>`:'—'}</td><td class="num">${b.t?`<span class="baja">${n(sal)}</span>`:'—'}</td><td>${mejor}</td></tr>`; }).join('')+'</tbody>';
+  const x = gs.find(g=>g.periodo===F.periodo && g.perm===F.permisionario);
+  if(!x){ $('compDet').innerHTML='<p class="note">Elige una fila para ver qué RPU cambiaron entre el previo y el porteo.</p>'; return; }
+  if(!x.Porteo.length){ $('compDet').innerHTML='<p class="note">Este mes todavía no tiene archivo de Porteo para comparar.</p>'; return; }
+  const cs=cambios(x), ordenC=['Entró a porteo','Salió de porteo','Cambió de estatus','Solo en previo','Solo en porteo'];
+  cs.sort((p,q)=>ordenC.indexOf(p.tipo)-ordenC.indexOf(q.tipo));
+  const tot=ordenC.map(t=>[t,cs.filter(c=>c.tipo===t).length]).filter(([,v])=>v);
+  $('compDet').innerHTML = `<h2 style="font-size:1.05rem">Cambios en ${esc(x.perm)} · ${fmtPer(x.periodo)}</h2>
+    <p class="note">${tot.length ? tot.map(([t,v])=>`${t}: <b>${n(v)}</b>`).join(' · ') : 'El previo y el porteo traen los mismos estatus.'}</p>`+
+    (cs.length ? `<div class="scroll"><table><thead><tr><th>RPU</th><th>Cliente</th><th>Portea NXT</th><th>Cambio</th><th>Previo</th><th>Porteo</th></tr></thead><tbody>`+
+      cs.slice(0,300).map(c=>`<tr><td class="mono">${c.rpu}</td><td>${esc(c.r.cliente)||'—'}</td><td><span class="chip" style="--sw:var(${NXTVAR[c.r.portea_nxt]})">${c.r.portea_nxt}</span></td>
+        <td class="${c.tipo==='Entró a porteo'?'sube':c.tipo==='Salió de porteo'?'baja':''}">${c.tipo}</td><td>${c.a?esc(c.a.estatus):'—'}</td><td>${c.b?esc(c.b.estatus):'—'}</td></tr>`).join('')+
+      `</tbody></table></div>${cs.length>300?`<p class="note">Se muestran 300 de ${n(cs.length)} cambios; usa el buscador para encontrar un RPU.</p>`:''}` : '');
+}
+function render(){ const rows=filtradas(); filtrosUI(); legends(); kpis(rows); chartPeriodo(rows); chartPerm(rows); comparativa(ROWS.filter(r=>pasa(r,'tipo'))); matrix(rows); tabla(rows); }
 
 // ===== Eventos =====
 KEYS.forEach(k=>$('f_'+k).addEventListener('change',e=>{F[k]=e.target.value; page=0; render();}));
@@ -348,9 +424,9 @@ $('pgPrev').onclick=()=>{page--;render();}; $('pgNext').onclick=()=>{page++;rend
 document.addEventListener('click',e=>{
   const s=e.target.closest('[data-set]'); if(s){ setF(JSON.parse(s.dataset.set)); return; }
   const c=e.target.closest('.fchip'); if(c){ F[c.dataset.k]=''; page=0; render(); return; }
-  if(e.target.closest('#btnRestablecer')){ KEYS.forEach(k=>F[k]=''); $('fBuscar').value=''; page=0; render(); }
+  if(e.target.closest('#btnRestablecer')){ restablecer(); }
 });
-document.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ') && e.target.matches('svg [data-set]')){ e.preventDefault(); setF(JSON.parse(e.target.dataset.set)); }});
+document.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ') && e.target.matches('svg [data-set], tr.fila[data-set]')){ e.preventDefault(); setF(JSON.parse(e.target.dataset.set)); }});
 $('btnActualizar').onclick=()=>actualizar(true);
 
 const dlg=$('dlg'), msgBase='Las opciones son las carpetas que existen en Drive dentro de "Porteo Dashboard".';
@@ -358,14 +434,14 @@ $('btnAgregar').onclick=()=>{ $('dlgMsg').textContent=msgBase; if(F.permisionari
 $('btnCancelar').onclick=()=>dlg.close();
 $('frmSubir').addEventListener('submit',async e=>{
   e.preventDefault();
-  const p=$('selPerm').value, f=$('archivo').files[0];
-  if(!p||!f){ $('dlgMsg').textContent='Elige un permisionario y un archivo.'; return; }
-  if(!API_URL){ $('dlgMsg').innerHTML=`Listo para enviar <b>${esc(f.name)}</b> a <b>${esc(p)}</b>. En la vista de prueba no se sube; se activa al publicar con el Apps Script.`; return; }
+  const p=$('selPerm').value, f=$('archivo').files[0], tipoArchivo=(document.querySelector('input[name=tipoArchivo]:checked')||{}).value;
+  if(!p||!tipoArchivo||!f){ $('dlgMsg').textContent='Elige el permisionario, si es Porteo o Previo, y el archivo.'; return; }
+  if(!API_URL){ $('dlgMsg').innerHTML=`Listo para enviar <b>${esc(f.name)}</b> a <b>${esc(p)} / ${tipoArchivo}</b>. En la vista de prueba no se sube; se activa al publicar con el Apps Script.`; return; }
   const b=$('btnSubir'); b.disabled=true; b.classList.add('cargando'); $('dlgMsg').textContent='Subiendo y leyendo el archivo…';
   try{
     const base64 = await new Promise((ok,ko)=>{ const fr=new FileReader(); fr.onload=()=>ok(String(fr.result).split(',')[1]); fr.onerror=()=>ko(new Error('No se pudo leer el archivo')); fr.readAsDataURL(f); });
     const r = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({accion:'subir',permisionario:p,nombre:f.name,tipo:f.type,base64})});
+      body:JSON.stringify({accion:'subir',permisionario:p,tipoArchivo,nombre:f.name,tipo:f.type,base64})});
     const j = await r.json(); if(!j.ok) throw new Error(j.error);
     $('dlgMsg').innerHTML=`Se guardó <b>${esc(j.archivo)}</b> en la carpeta <b>${esc(j.carpeta)}</b> y el dashboard ya lo incluye.`;
     $('archivo').value=''; cargarRespuesta(j);
