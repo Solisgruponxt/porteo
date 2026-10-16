@@ -464,8 +464,11 @@ $('frmSubir').addEventListener('submit',async e=>{
     const r = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({accion:'subir',permisionario:p,tipoArchivo,nombre:f.name,tipo:f.type,base64})});
     const j = await r.json(); if(!j.ok) throw new Error(j.error);
-    $('dlgMsg').innerHTML=`Se guardó <b>${esc(j.archivo)}</b> en la carpeta <b>${esc(j.carpeta)}</b> y el dashboard ya lo incluye.`;
-    $('archivo').value=''; cargarRespuesta(j);
+    // Subido: se cierra la ventana y se actualiza el dashboard como si se picara Actualizar
+    $('archivo').value=''; document.querySelectorAll('input[name=tipoArchivo]').forEach(x=>x.checked=false);
+    dlg.close();
+    await actualizar(true);
+    $('estado').textContent = `Se subió ${j.archivo} a ${j.carpeta} · ` + $('estado').textContent;
   }catch(err){ $('dlgMsg').textContent='No se subió: '+err.message; }
   finally{ b.disabled=false; b.classList.remove('cargando'); }
 });
