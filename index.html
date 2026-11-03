@@ -56,6 +56,9 @@ h2{font-family:var(--f-display);font-weight:600;font-size:1.25rem;margin:0;lette
 .frow label{display:grid;gap:2px;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 select,input[type=search],input[type=password]{font:500 .9rem var(--f-body);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:150px;max-width:100%}
 select.on{border-color:var(--accent);background:var(--accent-soft)}
+.permbar{display:grid;gap:8px}
+.permhd{display:flex;gap:10px;align-items:baseline}
+.permhd .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
 .perms{display:flex;flex-wrap:wrap;gap:8px}
 .pbtn{font:600 .95rem var(--f-body);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 14px;cursor:pointer;display:inline-flex;gap:8px;align-items:baseline}
 .pbtn small{font-weight:500;font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -154,7 +157,6 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end}
   <div class="avisos" id="avisos" hidden></div>
 
   <div class="filters" role="search">
-    <div class="perms" id="perms" role="group" aria-label="Permisionario"></div>
     <div class="frow">
       <label for="f_tipo">Tipo<select id="f_tipo" data-k="tipo"></select></label>
       <label for="f_periodo">Periodo<select id="f_periodo" data-k="periodo"></select></label>
@@ -170,6 +172,11 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end}
   </div>
 
   <section class="kpis" id="kpis"></section>
+
+  <section class="permbar" aria-labelledby="permTit">
+    <div class="permhd"><span class="lbl" id="permTit">Permisionarios</span><span class="note">puedes escoger varios</span></div>
+    <div class="perms" id="perms" role="group" aria-labelledby="permTit"></div>
+  </section>
 
   <section class="panel">
       <div class="hd"><h2>Servicios por periodo</h2><span class="note">por mes: barra rayada = <b>Previo</b>, barra lisa = <b>Porteo</b> · arriba: total, <b style="color:var(--c-porteo)">en porteo</b> y <b style="color:var(--c-fuera)">fuera de porteo</b> · clic para filtrar</span></div>
@@ -272,6 +279,9 @@ function cruzar(r){
 // ===== Datos =====
 let ROWS=[], CARPETAS=[], page=0, cargado=false; const PAGE=50;
 const F = {}; KEYS.forEach(k=>F[k]='');
+let PM = new Set();   // permisionarios elegidos (varios); F.permisionario lo refleja solo cuando hay uno
+function setPerm(arr){ PM=new Set(arr); F.permisionario = PM.size===1 ? [...PM][0] : ''; }
+const syncPerm = () => { PM = F.permisionario ? new Set([F.permisionario]) : new Set(); };
 
 function cargarRespuesta(api){
   CARPETAS = api.carpetas||[];
@@ -279,6 +289,7 @@ function cargarRespuesta(api){
     Object.assign(r, cruzar(r)); r.cliente = r.cliente || r.cliente_reg; r.categoria = CATEGORIAS[r.estatus] || 'Sin estatus';
     r.tipo = r.tipo || 'Porteo'; return r; });
   if(!cargado){ restablecer(false); cargado=true; }
+  setPerm([...PM].filter(v=>ROWS.some(r=>r.permisionario===v)));
   KEYS.forEach(k=>{ if(F[k] && !ROWS.some(r=>r[k]===F[k])) F[k]=''; });
   const hora = api.actualizado ? new Date(api.actualizado).toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'}) : '';
   $('estado').textContent = `${hora?'Actualizado '+hora+' · ':''}${n(api.archivos??0)} archivo(s)${api.procesados?' · '+api.procesados+' leído(s) ahora':''}`;
@@ -303,14 +314,14 @@ async function actualizar(forzar){
 
 // ===== Filtros dinámicos =====
 function pasa(r, salvo){ const q=$('fBuscar').value.trim().toLowerCase();
-  return KEYS.every(k=>k===salvo || !F[k] || r[k]===F[k])
+  return KEYS.every(k=>k===salvo || (k==='permisionario' ? (!PM.size || PM.has(r[k])) : (!F[k] || r[k]===F[k])))
     && (!q || [r.rpu,r.cliente,r.id_medidor,r.observaciones,r.estatus].join(' ').toLowerCase().includes(q)); }
 const filtradas = () => ROWS.filter(r=>pasa(r));
 function restablecer(pintar=true){ // por defecto se ve el Porteo, para no sumar dos veces el mismo mes
-  KEYS.forEach(k=>F[k]=''); F.tipo = ROWS.some(r=>r.tipo==='Porteo') ? 'Porteo' : ''; $('fBuscar').value=''; page=0; if(pintar) render(); }
+  KEYS.forEach(k=>F[k]=''); PM=new Set(); F.tipo = ROWS.some(r=>r.tipo==='Porteo') ? 'Porteo' : ''; $('fBuscar').value=''; page=0; if(pintar) render(); }
 function setF(obj){ // alterna: si ya está seleccionado exactamente eso, lo quita
   const igual = Object.entries(obj).every(([k,v])=>F[k]===v);
-  Object.entries(obj).forEach(([k,v])=>F[k]= igual ? '' : v); page=0; render(); }
+  Object.entries(obj).forEach(([k,v])=>F[k]= igual ? '' : v); if('permisionario' in obj) syncPerm(); page=0; render(); }
 function fillSel(sel, vals, all){ const cur=sel.value; sel.innerHTML=`<option value="">${all}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join(''); sel.value=vals.includes(cur)?cur:''; }
 function orden(k,vals){ if(k==='tipo') return ['Porteo','Previo'].filter(v=>vals.includes(v)); if(k==='categoria') return CATS.filter(v=>vals.includes(v)); if(k==='portea_nxt') return NXT.filter(v=>vals.includes(v)); return vals.sort(); }
 function filtrosUI(){
@@ -319,13 +330,17 @@ function filtrosUI(){
     if(F[k] && !(F[k] in cnt)) cnt[F[k]]=0;
     sel.innerHTML = `<option value="">Todos (${n(Object.values(cnt).reduce((a,b)=>a+b,0))})</option>` +
       orden(k,Object.keys(cnt)).map(v=>`<option value="${esc(v)}">${esc(fmtVal(k,v))} (${n(cnt[v])})</option>`).join('');
+    if(k==='permisionario' && PM.size>1){ sel.insertAdjacentHTML('beforeend',`<option value="__varios">Varios (${PM.size})</option>`); sel.value='__varios'; sel.classList.add('on'); return; }
     sel.value=F[k]; sel.classList.toggle('on',!!F[k]); });
   const pc={}; ROWS.forEach(r=>{ if(pasa(r,'permisionario')) pc[r.permisionario]=(pc[r.permisionario]||0)+1; });
   const lista=[...new Set([...CARPETAS,...ROWS.map(r=>r.permisionario)])].sort((a,b)=>a.localeCompare(b,'es'));
-  const pb=(v,txt,c)=>`<button type="button" class="pbtn" aria-pressed="${F.permisionario===v}" data-set='${esc(JSON.stringify({permisionario:v}))}'${c||v===''||F.permisionario===v?'':' disabled title="Sin datos con estos filtros"'}>${esc(txt)}<small>${n(c)}</small></button>`;
+  const pb=(v,txt,c)=>{ const on = v==='' ? !PM.size : PM.has(v);
+    return `<button type="button" class="pbtn" aria-pressed="${on}" data-perm="${esc(v)}"${c||v===''||on?'':' disabled title="Sin datos con estos filtros"'}>${esc(txt)}<small>${n(c)}</small></button>`; };
   $('perms').innerHTML = pb('','Todos',Object.values(pc).reduce((a,b)=>a+b,0)) + lista.map(v=>pb(v,v,pc[v]||0)).join('');
-  const act=KEYS.filter(k=>F[k]);
-  $('chips').innerHTML = act.map(k=>`<button class="fchip" type="button" data-k="${k}"><b>${ETIQ[k]}:</b> ${esc(fmtVal(k,F[k]))}</button>`).join('')
+  const act=KEYS.filter(k=>k==='permisionario' ? PM.size : F[k]);
+  $('chips').innerHTML = act.map(k=> k==='permisionario'
+      ? [...PM].sort().map(v=>`<button class="fchip" type="button" data-k="${k}" data-v="${esc(v)}"><b>${ETIQ[k]}:</b> ${esc(v)}</button>`).join('')
+      : `<button class="fchip" type="button" data-k="${k}"><b>${ETIQ[k]}:</b> ${esc(fmtVal(k,F[k]))}</button>`).join('')
     + (act.length||$('fBuscar').value ? '' : '<span class="note">Sin filtros: mostrando todo el histórico</span>');
 }
 const count=(rows,k)=>rows.reduce((m,r)=>(m[r[k]]=(m[r[k]]||0)+1,m),{});
@@ -461,12 +476,15 @@ function comparativa(rows){
 function render(){ const rows=filtradas(); filtrosUI(); legends(); kpis(rows); const ambos=ROWS.filter(r=>pasa(r,'tipo')); chartPeriodo(ambos); chartPerm(rows); comparativa(ambos); matrix(rows); tabla(rows); }
 
 // ===== Eventos =====
-KEYS.forEach(k=>$('f_'+k).addEventListener('change',e=>{F[k]=e.target.value; page=0; render();}));
+KEYS.forEach(k=>$('f_'+k).addEventListener('change',e=>{ if(e.target.value==='__varios') return;
+  F[k]=e.target.value; if(k==='permisionario') syncPerm(); page=0; render();}));
 $('fBuscar').addEventListener('input',()=>{page=0;render();});
 $('pgPrev').onclick=()=>{page--;render();}; $('pgNext').onclick=()=>{page++;render();};
 document.addEventListener('click',e=>{
+  const pm=e.target.closest('[data-perm]'); if(pm){ const v=pm.dataset.perm;
+    if(!v) setPerm([]); else { const x=new Set(PM); x.has(v)?x.delete(v):x.add(v); setPerm([...x]); } page=0; render(); return; }
   const s=e.target.closest('[data-set]'); if(s){ setF(JSON.parse(s.dataset.set)); return; }
-  const c=e.target.closest('.fchip'); if(c){ F[c.dataset.k]=''; page=0; render(); return; }
+  const c=e.target.closest('.fchip'); if(c){ if(c.dataset.k==='permisionario') setPerm([...PM].filter(v=>v!==c.dataset.v)); else F[c.dataset.k]=''; page=0; render(); return; }
   if(e.target.closest('#btnRestablecer')){ restablecer(); }
 });
 document.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ') && e.target.matches('svg [data-set], tr.fila[data-set]')){ e.preventDefault(); setF(JSON.parse(e.target.dataset.set)); }});
