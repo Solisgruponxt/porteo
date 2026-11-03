@@ -57,6 +57,10 @@ h2{font-family:var(--f-display);font-weight:600;font-size:1.25rem;margin:0;lette
 select,input[type=search],input[type=password]{font:500 .9rem var(--f-body);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:150px;max-width:100%}
 select.on{border-color:var(--accent);background:var(--accent-soft)}
 .permbar{display:grid;gap:8px}
+.tendnota{display:grid;gap:4px;font-size:.8rem;color:var(--muted)}
+.tendnota .k{display:inline-block;width:22px;height:0;border-top:2.5px solid var(--fg);vertical-align:middle;margin-right:6px}
+.tendnota .k.p{border-top:2.5px dashed var(--accent)}
+.tendnota .ojo{border-left:3px solid var(--c-incid);padding:4px 10px;color:var(--fg)}
 .permhd{display:flex;gap:10px;align-items:baseline}
 .permhd .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
 .perms{display:flex;flex-wrap:wrap;gap:8px}
@@ -96,6 +100,10 @@ svg .val{fill:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
 svg .verde{fill:var(--c-porteo);font-weight:700;font-variant-numeric:tabular-nums}
 svg .rojo{fill:var(--c-fuera);font-weight:700;font-variant-numeric:tabular-nums}
 svg .grande{font-size:13px}
+svg .real{fill:none;stroke:var(--fg);stroke-width:2.5;stroke-linejoin:round}
+svg .punto{fill:var(--c-porteo);stroke:var(--fg);stroke-width:2}
+svg .tend{stroke:var(--accent);stroke-width:2.5;stroke-dasharray:8 6}
+svg .proy{fill:var(--surface);stroke:var(--accent);stroke-width:2.5}
 svg .click{cursor:pointer}
 svg .click:hover{opacity:.8}
 svg .dim{opacity:.5}
@@ -182,6 +190,7 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end}
       <div class="hd"><h2>Servicios por periodo</h2><span class="note">por mes: barra rayada = <b>Previo</b>, barra lisa = <b>Porteo</b> · arriba: total, <b style="color:var(--c-porteo)">en porteo</b> y <b style="color:var(--c-fuera)">fuera de porteo</b> · clic para filtrar</span></div>
       <div class="legend" id="legCat"></div>
       <div class="scroll" id="boxPeriodo"><svg id="chPeriodo" role="img" aria-label="Servicios por periodo"></svg></div>
+      <div class="tendnota" id="tendNota"></div>
   </section>
 
   <section class="grid2">
@@ -369,10 +378,24 @@ function chartPeriodo(rows){ // rows ya trae Previo y Porteo: cada mes lleva dos
   const svg=$('chPeriodo'), pers=[...new Set(rows.map(r=>r.periodo))].sort();
   const tipos=['Previo','Porteo'].filter(t=>rows.some(r=>r.tipo===t));
   const caja=$('boxPeriodo').clientWidth||900;
-  const nb=Math.max(1,tipos.length), W=Math.max(caja,pers.length*(nb*64+40)+60), H=360, L=52, B=46, T=58, ih=H-B-T;
-  const step=(W-L-10)/Math.max(1,pers.length), bw=Math.min(90,step*0.6/nb), gap=10;
   const grupos=pers.map(p=>({p, barras:tipos.map(t=>{const rr=rows.filter(r=>r.periodo===p&&r.tipo===t);return {t,n:rr.length,c:count(rr,'categoria')};})}));
-  const max=niceMax(Math.max(1,...grupos.flatMap(g=>g.barras.map(b=>b.n))));
+  // Tendencia: servicios En porteo del tipo elegido (Porteo por defecto), recta de mínimos cuadrados y proyección al mes siguiente
+  const tT=F.tipo||'Porteo', mesN=p=>{const [y,m]=p.split('-');return +y*12+(+m-1);}, perDe=k=>`${Math.floor(k/12)}-${String(k%12+1).padStart(2,'0')}`;
+  const pts=grupos.map((g,i)=>{const b=g.barras.find(b=>b.t===tT);return b&&b.n?{i,k:mesN(g.p),v:(b.c['En porteo']||0)+(b.c['En porteo con incidencia']||0)}:null;}).filter(Boolean);
+  let tend=null;
+  if(pts.length>=2){ const mx=pts.reduce((a,q)=>a+q.k,0)/pts.length, my=pts.reduce((a,q)=>a+q.v,0)/pts.length;
+    const m=pts.reduce((a,q)=>a+(q.k-mx)*(q.v-my),0)/pts.reduce((a,q)=>a+(q.k-mx)**2,0), f=k=>my+m*(k-mx);
+    const kSig=mesN(pers[pers.length-1])+1; tend={f,m,kSig,per:perDe(kSig),v:Math.max(0,Math.round(f(kSig)))}; }
+  const slots=pers.length+(tend?1:0);
+  // aviso: permisionarios que no tienen ese tipo en todos los meses mostrados (sesgan la tendencia)
+  const incompletos=[...new Set(rows.map(r=>r.permisionario))].sort().filter(pm=>pts.some(q=>!rows.some(r=>r.permisionario===pm&&r.tipo===tT&&r.periodo===pers[q.i])))
+    .map(pm=>`${esc(pm)} (falta ${pts.filter(q=>!rows.some(r=>r.permisionario===pm&&r.tipo===tT&&r.periodo===pers[q.i])).map(q=>fmtPer(pers[q.i])).join(', ')})`);
+  $('tendNota').innerHTML = !tend ? (pts.length===1?'<span>La tendencia aparece cuando haya al menos dos meses de '+tT+'.</span>':'')
+    : `<span><i class="k"></i>Servicios en porteo por mes (${tT}) &nbsp; <i class="k p"></i>Tendencia y proyección a ${fmtPer(tend.per)}: ≈ ${n(tend.v)} en porteo</span>`
+      + (incompletos.length?`<span class="ojo">La tendencia se distorsiona porque estos permisionarios no tienen ${tT} en todos los meses: ${incompletos.join(' · ')}. Escoge solo permisionarios con todos los meses para una tendencia confiable.</span>`:'');
+  const nb=Math.max(1,tipos.length), W=Math.max(caja,slots*(nb*64+40)+60), H=360, L=52, B=46, T=58, ih=H-B-T;
+  const step=(W-L-10)/Math.max(1,slots), bw=Math.min(90,step*0.6/nb), gap=10;
+  const max=niceMax(Math.max(1,...grupos.flatMap(g=>g.barras.map(b=>b.n)),tend?tend.v:0));
   let s=`<defs><pattern id="rayas" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><rect width="2.5" height="6" fill="var(--surface)" opacity=".6"/></pattern></defs>`;
   for(let i=0;i<=4;i++){const v=max*i/4,y=T+ih-ih*i/4;s+=`<line x1="${L}" x2="${W-6}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${L-6}" y="${y+4}" text-anchor="end">${n(v)}</text>`;}
   grupos.forEach((g,i)=>{
@@ -390,6 +413,22 @@ function chartPeriodo(rows){ // rows ya trae Previo y Porteo: cada mes lleva dos
       s+=`<text class="click" ${attrSet({periodo:g.p,tipo:b.t})} x="${x+bw/2}" y="${T+ih+14}" text-anchor="middle">${b.t}</text></g>`; });
     s+=`<text class="val click" ${attrSet({periodo:g.p})} x="${x0+ancho/2}" y="${H-8}" text-anchor="middle">${fmtPer(g.p)}</text>`;
   });
+  if(tend){ // posición x de la barra del tipo elegido en cada mes
+    const jT=Math.max(0,tipos.indexOf(tT)), ancho=nb*bw+(nb-1)*gap, cxI=i=>L+step*i+(step-ancho)/2+jT*(bw+gap)+bw/2;
+    const yV=v=>T+ih-ih*Math.max(0,v)/max, cxP=L+step*pers.length+step/2;
+    const kX=k=>{ const q=pts.find(q=>q.k===k); return q?cxI(q.i):null; };
+    const x1=cxI(pts[0].i), y1=yV(tend.f(pts[0].k)), y2=yV(tend.v);
+    s+=`<line class="tend" x1="${x1}" y1="${y1}" x2="${cxP}" y2="${y2}"/>`;
+    s+=`<polyline class="real" points="${pts.map(q=>`${cxI(q.i)},${yV(q.v)}`).join(' ')}"/>`;
+    pts.forEach(q=>{ s+=`<circle class="punto" cx="${cxI(q.i)}" cy="${yV(q.v)}" r="5"><title>${fmtPer(pers[q.i])} · ${tT} · En porteo: ${n(q.v)}</title></circle>`; });
+    const dif=tend.v-pts[pts.length-1].v;
+    s+=`<circle class="proy" cx="${cxP}" cy="${y2}" r="6"><title>Proyección ${fmtPer(tend.per)}: ${n(tend.v)} en porteo</title></circle>`
+      +`<text class="verde grande" x="${cxP}" y="${y2-26}" text-anchor="middle">≈ ${n(tend.v)}</text>`
+      +`<text class="${dif>=0?'verde':'rojo'}" x="${cxP}" y="${y2-11}" text-anchor="middle">${dif>=0?'▲ +':'▼ '}${n(dif)}</text>`
+      +`<text x="${cxP}" y="${T+ih+14}" text-anchor="middle">Proyección</text>`
+      +`<text class="val" x="${cxP}" y="${H-8}" text-anchor="middle">${fmtPer(tend.per)}</text>`;
+    s+=`<line x1="${L+step*pers.length}" x2="${L+step*pers.length}" y1="${T-10}" y2="${T+ih}" stroke="var(--line)" stroke-dasharray="3 4"/>`;
+  }
   if(!pers.length) s+=`<text x="${W/2}" y="${H/2}" text-anchor="middle">Sin datos con estos filtros</text>`;
   svgEl(svg,W,H); svg.innerHTML=s;
 }
