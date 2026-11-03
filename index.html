@@ -56,6 +56,14 @@ h2{font-family:var(--f-display);font-weight:600;font-size:1.25rem;margin:0;lette
 .frow label{display:grid;gap:2px;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 select,input[type=search],input[type=password]{font:500 .9rem var(--f-body);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 9px;min-width:150px;max-width:100%}
 select.on{border-color:var(--accent);background:var(--accent-soft)}
+.perms{display:flex;flex-wrap:wrap;gap:8px}
+.pbtn{font:600 .95rem var(--f-body);color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 14px;cursor:pointer;display:inline-flex;gap:8px;align-items:baseline}
+.pbtn small{font-weight:500;font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.pbtn:hover:not(:disabled){border-color:var(--accent)}
+.pbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.pbtn[aria-pressed="true"] small{color:var(--on-accent);opacity:.85}
+.pbtn:disabled{opacity:.45;cursor:default}
+.pbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:26px}
 .btn.reset{background:var(--reset);border-color:var(--reset);color:var(--on-reset);align-self:flex-end}
 .btn.reset:hover{filter:brightness(1.08)}
@@ -146,6 +154,7 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end}
   <div class="avisos" id="avisos" hidden></div>
 
   <div class="filters" role="search">
+    <div class="perms" id="perms" role="group" aria-label="Permisionario"></div>
     <div class="frow">
       <label for="f_tipo">Tipo<select id="f_tipo" data-k="tipo"></select></label>
       <label for="f_periodo">Periodo<select id="f_periodo" data-k="periodo"></select></label>
@@ -311,6 +320,10 @@ function filtrosUI(){
     sel.innerHTML = `<option value="">Todos (${n(Object.values(cnt).reduce((a,b)=>a+b,0))})</option>` +
       orden(k,Object.keys(cnt)).map(v=>`<option value="${esc(v)}">${esc(fmtVal(k,v))} (${n(cnt[v])})</option>`).join('');
     sel.value=F[k]; sel.classList.toggle('on',!!F[k]); });
+  const pc={}; ROWS.forEach(r=>{ if(pasa(r,'permisionario')) pc[r.permisionario]=(pc[r.permisionario]||0)+1; });
+  const lista=[...new Set([...CARPETAS,...ROWS.map(r=>r.permisionario)])].sort((a,b)=>a.localeCompare(b,'es'));
+  const pb=(v,txt,c)=>`<button type="button" class="pbtn" aria-pressed="${F.permisionario===v}" data-set='${esc(JSON.stringify({permisionario:v}))}'${c||v===''||F.permisionario===v?'':' disabled title="Sin datos con estos filtros"'}>${esc(txt)}<small>${n(c)}</small></button>`;
+  $('perms').innerHTML = pb('','Todos',Object.values(pc).reduce((a,b)=>a+b,0)) + lista.map(v=>pb(v,v,pc[v]||0)).join('');
   const act=KEYS.filter(k=>F[k]);
   $('chips').innerHTML = act.map(k=>`<button class="fchip" type="button" data-k="${k}"><b>${ETIQ[k]}:</b> ${esc(fmtVal(k,F[k]))}</button>`).join('')
     + (act.length||$('fBuscar').value ? '' : '<span class="note">Sin filtros: mostrando todo el histórico</span>');
