@@ -82,6 +82,9 @@ button.kpi:hover{border-color:var(--accent)}
 .legend button::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--sw)}
 svg text{fill:var(--muted);font-family:var(--f-body);font-size:11px}
 svg .val{fill:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+svg .verde{fill:var(--c-porteo);font-weight:700;font-variant-numeric:tabular-nums}
+svg .rojo{fill:var(--c-fuera);font-weight:700;font-variant-numeric:tabular-nums}
+svg .grande{font-size:13px}
 svg .click{cursor:pointer}
 svg .click:hover{opacity:.8}
 svg .dim{opacity:.5}
@@ -159,12 +162,13 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end}
 
   <section class="kpis" id="kpis"></section>
 
-  <section class="grid2">
-    <div class="panel">
-      <div class="hd"><h2>Servicios por periodo</h2><span class="note">por mes: barra rayada = <b>Previo</b>, barra lisa = <b>Porteo</b> · clic para filtrar</span></div>
+  <section class="panel">
+      <div class="hd"><h2>Servicios por periodo</h2><span class="note">por mes: barra rayada = <b>Previo</b>, barra lisa = <b>Porteo</b> · arriba: total, <b style="color:var(--c-porteo)">en porteo</b> y <b style="color:var(--c-fuera)">fuera de porteo</b> · clic para filtrar</span></div>
       <div class="legend" id="legCat"></div>
-      <div class="scroll"><svg id="chPeriodo" role="img" aria-label="Servicios por periodo"></svg></div>
-    </div>
+      <div class="scroll" id="boxPeriodo"><svg id="chPeriodo" role="img" aria-label="Servicios por periodo"></svg></div>
+  </section>
+
+  <section class="grid2">
     <div class="panel">
       <div class="hd"><h2>Por permisionario</h2><span class="note">clic en un nombre o segmento para filtrar</span></div>
       <div class="legend" id="legNxt"></div>
@@ -336,8 +340,9 @@ const attrSet = o => `data-set='${esc(JSON.stringify(o))}' tabindex="0" role="bu
 function chartPeriodo(rows){ // rows ya trae Previo y Porteo: cada mes lleva dos barras, la no elegida en el filtro Tipo se atenúa
   const svg=$('chPeriodo'), pers=[...new Set(rows.map(r=>r.periodo))].sort();
   const tipos=['Previo','Porteo'].filter(t=>rows.some(r=>r.tipo===t));
-  const nb=Math.max(1,tipos.length), W=Math.max(420,pers.length*(nb*48+40)+60), H=280, L=44, B=46, T=20, ih=H-B-T;
-  const step=(W-L-10)/Math.max(1,pers.length), bw=Math.min(44,step*0.7/nb), gap=6;
+  const caja=$('boxPeriodo').clientWidth||900;
+  const nb=Math.max(1,tipos.length), W=Math.max(caja,pers.length*(nb*64+40)+60), H=360, L=52, B=46, T=58, ih=H-B-T;
+  const step=(W-L-10)/Math.max(1,pers.length), bw=Math.min(90,step*0.6/nb), gap=10;
   const grupos=pers.map(p=>({p, barras:tipos.map(t=>{const rr=rows.filter(r=>r.periodo===p&&r.tipo===t);return {t,n:rr.length,c:count(rr,'categoria')};})}));
   const max=niceMax(Math.max(1,...grupos.flatMap(g=>g.barras.map(b=>b.n))));
   let s=`<defs><pattern id="rayas" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><rect width="2.5" height="6" fill="var(--surface)" opacity=".6"/></pattern></defs>`;
@@ -350,7 +355,10 @@ function chartPeriodo(rows){ // rows ya trae Previo y Porteo: cada mes lleva dos
       CATS.forEach(c=>{const v=b.c[c]||0;if(!v)return;const h=ih*v/max;y-=h;
         s+=`<rect class="click" ${attrSet({periodo:g.p,tipo:b.t,categoria:c})} x="${x}" y="${y}" width="${bw}" height="${h}" fill="var(${CATVAR[c]})"><title>${fmtPer(g.p)} · ${b.t} · ${c}: ${n(v)}</title></rect>`;
         if(b.t==='Previo') s+=`<rect x="${x}" y="${y}" width="${bw}" height="${h}" fill="url(#rayas)" pointer-events="none"/>`;});
-      if(b.n) s+=`<text class="val" x="${x+bw/2}" y="${y-5}" text-anchor="middle">${n(b.n)}</text>`;
+      if(b.n){ const cx=x+bw/2, en=(b.c['En porteo']||0)+(b.c['En porteo con incidencia']||0), fu=b.c['Fuera de porteo']||0;
+        s+=`<text class="val grande" x="${cx}" y="${y-40}" text-anchor="middle">${n(b.n)}</text>`
+          +`<text class="verde click" ${attrSet({periodo:g.p,tipo:b.t,categoria:'En porteo'})} x="${cx}" y="${y-23}" text-anchor="middle">${n(en)}<title>En porteo</title></text>`
+          +`<text class="rojo click" ${attrSet({periodo:g.p,tipo:b.t,categoria:'Fuera de porteo'})} x="${cx}" y="${y-7}" text-anchor="middle">${n(fu)}<title>Fuera de porteo</title></text>`; }
       s+=`<text class="click" ${attrSet({periodo:g.p,tipo:b.t})} x="${x+bw/2}" y="${T+ih+14}" text-anchor="middle">${b.t}</text></g>`; });
     s+=`<text class="val click" ${attrSet({periodo:g.p})} x="${x0+ancho/2}" y="${H-8}" text-anchor="middle">${fmtPer(g.p)}</text>`;
   });
@@ -450,6 +458,7 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ') && e.target.matches('svg [data-set], tr.fila[data-set]')){ e.preventDefault(); setF(JSON.parse(e.target.dataset.set)); }});
 $('btnActualizar').onclick=()=>actualizar(true);
+let tRes; addEventListener('resize',()=>{ clearTimeout(tRes); tRes=setTimeout(()=>{ if(cargado) chartPeriodo(ROWS.filter(r=>pasa(r,'tipo'))); },150); });
 
 const dlg=$('dlg'), msgBase='Las opciones son las carpetas que existen en Drive dentro de "Porteo Dashboard".';
 $('btnAgregar').onclick=()=>{ $('dlgMsg').textContent=msgBase; if(F.permisionario) $('selPerm').value=F.permisionario; dlg.showModal(); };
