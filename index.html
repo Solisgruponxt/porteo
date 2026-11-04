@@ -97,6 +97,7 @@ button.kpi:hover{border-color:var(--accent)}
 .legend button::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--sw)}
 svg text{fill:var(--muted);font-family:var(--f-body);font-size:11px}
 svg .val{fill:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+svg .segpct{fill:#fff;font-weight:700;font-size:10.5px;pointer-events:none;paint-order:stroke;stroke:rgba(0,0,0,.25);stroke-width:2px}
 svg .verde{fill:var(--c-porteo);font-weight:700;font-variant-numeric:tabular-nums}
 svg .rojo{fill:var(--c-fuera);font-weight:700;font-variant-numeric:tabular-nums}
 svg .grande{font-size:13px}
@@ -420,15 +421,18 @@ function chartPeriodo(rows){ // rows ya trae Previo y Porteo: cada mes lleva dos
   svgEl(svg,W,H); svg.innerHTML=s;
 }
 function chartPerm(rows){
-  const svg=$('chPerm'), perms=[...new Set(rows.map(r=>r.permisionario))].sort();
+  const svg=$('chPerm'), perms=[...new Set(rows.map(r=>r.permisionario))];
   const W=520, rowH=46, T=10, L=110, R=60, H=Math.max(120,T+perms.length*rowH+10), iw=W-L-R;
-  const by=perms.map(p=>{const rr=rows.filter(r=>r.permisionario===p);return {p,t:rr.length,c:count(rr,'portea_nxt')};});
+  const by=perms.map(p=>{const rr=rows.filter(r=>r.permisionario===p);return {p,t:rr.length,c:count(rr,'portea_nxt')};})
+    .sort((a,b)=>b.t-a.t||a.p.localeCompare(b.p,'es')); // de mayor a menor número de servicios
+  const pct=(v,t)=>{const x=100*v/t;return (x>=10||x===0?Math.round(x):x.toFixed(1))+'%';};
   const max=Math.max(1,...by.map(b=>b.t)); let s='';
   by.forEach((b,i)=>{const y=T+i*rowH;let x=L;
     s+=`<text class="val click" ${attrSet({permisionario:b.p})} x="${L-8}" y="${y+19}" text-anchor="end">${esc(b.p)}</text>`;
     NXT.forEach(k=>{const v=b.c[k]||0;if(!v)return;const w=iw*v/max;
-      s+=`<rect class="click" ${attrSet({permisionario:b.p,portea_nxt:k})} x="${x}" y="${y+6}" width="${w}" height="20" fill="var(${NXTVAR[k]})"><title>${esc(b.p)} · ${k}: ${n(v)}</title></rect>`;x+=w;});
-    s+=`<text x="${x+6}" y="${y+20}" class="val">${n(b.t)}</text><text x="${L}" y="${y+40}">${n(b.c['Portea NXT']||0)} portea NXT · ${n(b.c['No portea NXT']||0)} no · ${n(b.c['Sin registro']||0)} sin registro</text>`;});
+      s+=`<rect class="click" ${attrSet({permisionario:b.p,portea_nxt:k})} x="${x}" y="${y+6}" width="${w}" height="20" fill="var(${NXTVAR[k]})"><title>${esc(b.p)} · ${k}: ${n(v)} (${pct(v,b.t)})</title></rect>`;
+      if(w>=30) s+=`<text class="segpct" x="${x+w/2}" y="${y+20}" text-anchor="middle">${pct(v,b.t)}</text>`;x+=w;});
+    s+=`<text x="${x+6}" y="${y+20}" class="val">${n(b.t)}</text><text x="${L}" y="${y+40}">${n(b.c['Portea NXT']||0)} portea NXT (${pct(b.c['Portea NXT']||0,b.t)}) · ${n(b.c['No portea NXT']||0)} no (${pct(b.c['No portea NXT']||0,b.t)}) · ${n(b.c['Sin registro']||0)} sin registro (${pct(b.c['Sin registro']||0,b.t)})</text>`;});
   if(!perms.length) s+=`<text x="${W/2}" y="60" text-anchor="middle">Sin datos con estos filtros</text>`;
   svgEl(svg,W,H); svg.innerHTML=s;
 }
