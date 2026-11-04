@@ -120,8 +120,6 @@ td.obs{white-space:normal;min-width:340px;max-width:460px;font-size:.78rem;line-
 .matrix td.num button{font:600 1.15rem var(--f-display);color:var(--fg);background:none;border:0;padding:2px 6px;border-radius:4px;cursor:pointer;font-variant-numeric:tabular-nums}
 .matrix td.num button:hover{background:var(--accent-soft)}
 .matrix td.num button.sel{background:var(--accent);color:var(--on-accent)}
-.matrix td.num button .pct{font:500 .72rem var(--f-body);color:var(--muted);margin-left:5px}
-.matrix td.num button.sel .pct{color:inherit;opacity:.85}
 .pager{display:flex;align-items:center;gap:10px;justify-content:flex-end;color:var(--muted);font-size:.85rem;flex-wrap:wrap}
 .note{font-size:.8rem;color:var(--muted)}
 .avisos{font-size:.8rem;color:var(--muted);border-left:3px solid var(--c-incid);padding:6px 10px;background:var(--surface)}
@@ -198,7 +196,7 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end}
   </section>
 
   <section class="panel">
-    <div class="hd"><h2>Categoría contra Portea NXT</h2><span class="note">% = parte de la categoría (Total: parte del total) · clic en un número para filtrar</span></div>
+    <div class="hd"><h2>Categoría contra Portea NXT</h2><span class="note">clic en un número para filtrar</span></div>
     <div class="scroll"><table class="matrix" id="matrix"></table></div>
   </section>
 
@@ -441,11 +439,10 @@ function chartPerm(rows){
 function matrix(rows){
   const cats=CATS.filter(c=>rows.some(r=>r.categoria===c)), nx=NXT.filter(x=>rows.some(r=>r.portea_nxt===x));
   const cell=(c,x)=>rows.filter(r=>r.categoria===c&&(!x||r.portea_nxt===x)).length;
-  const pc=(v,t)=>{if(!t)return '0%';const x=100*v/t;return (x>=10||x===0?Math.round(x):x.toFixed(1))+'%';};
-  const btn=(o,v,t)=>`<button type="button" class="${Object.entries(o).every(([k,val])=>F[k]===val)?'sel':''}" data-set='${esc(JSON.stringify(o))}'>${n(v)}<span class="pct">${pc(v,t)}</span></button>`;
+  const btn=(o,v)=>`<button type="button" class="${Object.entries(o).every(([k,val])=>F[k]===val)?'sel':''}" data-set='${esc(JSON.stringify(o))}'>${n(v)}</button>`;
   $('matrix').innerHTML = !rows.length ? '<tbody><tr><td class="note">Sin datos con estos filtros</td></tr></tbody>' :
     `<thead><tr><th>Categoría</th>${nx.map(x=>`<th class="num">${x}</th>`).join('')}<th class="num">Total</th></tr></thead><tbody>`+
-    cats.map(c=>`<tr><td><span class="chip" style="--sw:var(${CATVAR[c]})">${c}</span></td>${nx.map(x=>`<td class="num">${btn({categoria:c,portea_nxt:x},cell(c,x),cell(c))}</td>`).join('')}<td class="num">${btn({categoria:c},cell(c),rows.length)}</td></tr>`).join('')+'</tbody>';
+    cats.map(c=>`<tr><td><span class="chip" style="--sw:var(${CATVAR[c]})">${c}</span></td>${nx.map(x=>`<td class="num">${btn({categoria:c,portea_nxt:x},cell(c,x))}</td>`).join('')}<td class="num">${btn({categoria:c},cell(c))}</td></tr>`).join('')+'</tbody>';
 }
 function tabla(rows){
   const pages=Math.max(1,Math.ceil(rows.length/PAGE)); page=Math.min(page,pages-1);
